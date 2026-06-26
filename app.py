@@ -440,20 +440,11 @@ def laporan_page():
 @app.route("/izin")
 def izin_page():
     return render_template("izin.html")
-
-
-@app.route("/register-face-general")
-def register_face_general():
-    return render_template("register_face_general.html")
-
-
+    
 @app.route("/register-face")
-def register_face():
-    employee_id = request.args.get("employee_id")
-    return render_template(
-        "register.html",
-        employee_id=employee_id
-    )
+def register_face_page():
+    """Face registration page"""
+    return render_template("register_face.html")
 
 
 # ===============================
