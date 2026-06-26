@@ -142,7 +142,9 @@
             {% endwith %}
 
             <!-- Login Form -->
-            <form id="loginForm" method="POST" action="{{ url_for('login') }}">
+            <form id="loginForm"
+                method="POST"
+                action="{{ url_for('login_api') }}">
                 <!-- Email -->
                 <div class="mb-6">
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-2">

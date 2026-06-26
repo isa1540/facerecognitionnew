@@ -8,7 +8,16 @@ os.environ["OMP_NUM_THREADS"] = "1"
 # ===============================
 # BASIC IMPORT
 # ===============================
-from flask import Flask, request, jsonify
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    render_template,
+    redirect,
+    url_for,
+    flash,
+    session
+)
 from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date, time
@@ -92,12 +101,20 @@ def register():
     return {"message": "User created"}, 201
 
 @app.route("/auth/login", methods=["POST"])
-def login():
-    data = request.json
+def login_api():
+    data = request.form
+
     user = User.query.filter_by(email=data.get("email")).first()
+
     if not user or not check_password_hash(user.password_hash, data.get("password")):
-        return {"error": "Invalid credentials"}, 401
-    return {"message": "Login success", "user_id": user.id}
+        flash("Email atau password salah.", "error")
+        return redirect(url_for("login_page"))
+
+    session["user_id"] = user.id
+    session["role"] = user.role
+
+    flash("Login berhasil.", "success")
+    return redirect(url_for("dashboard_page"))
 
 # ===============================
 # EMPLOYEE
@@ -231,10 +248,51 @@ def leave():
 
 @app.route("/")
 def index():
-    return {
-        "message": "Attendance API is running",
-        "status": "ok"
-    }
+    return render_template("login.html")
+
+@app.route("/login")
+def login_page():
+    return render_template("login.html")
+
+
+@app.route("/dashboard")
+def dashboard_page():
+    return render_template("dashboard.html")
+
+
+@app.route("/karyawan")
+def karyawan_page():
+    return render_template("karyawan.html")
+
+
+@app.route("/shift")
+def shift_page():
+    return render_template("shift.html")
+
+
+@app.route("/absen")
+def absen_page():
+    return render_template("absen.html")
+
+
+@app.route("/laporan")
+def laporan_page():
+    return render_template("laporan.html")
+
+
+@app.route("/izin")
+def izin_page():
+    return render_template("izin.html")
+
+
+@app.route("/register")
+def register_page():
+    return render_template("register.html")
+
+
+@app.route("/register-face")
+def register_face_page():
+    return render_template("register_face_general.html")
 
 # ===============================
 # LOCAL ONLY
