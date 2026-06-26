@@ -103,7 +103,10 @@ def register():
 
 @app.route("/auth/login", methods=["POST"])
 def login_api():
-    data = request.form
+    data = request.get_json() or request.form
+
+    if not data:
+        return {"error": "Invalid payload"}, 400
 
     user = User.query.filter_by(email=data.get("email")).first()
 
