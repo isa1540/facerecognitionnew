@@ -681,15 +681,15 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    const stats = data.stats;
+                    const stats = data.data; // <-- Perhatikan: data.data, bukan data.stats
                     
-                    // Update stats cards safely
-                    safeSetTextContent('totalEmployees', stats.total_employees);
-                    safeSetTextContent('activeEmployees', stats.total_employees);
-                    safeSetTextContent('todayAttendance', stats.today_attendance);
-                    safeSetTextContent('attendanceRate', stats.attendance_rate + '%');
-                    safeSetTextContent('pendingLeaves', stats.pending_leaves);
-                    safeSetTextContent('lateToday', stats.late_today);
+                    // Update stats cards
+                    safeSetTextContent('totalEmployees', stats.total_employees || 0);
+                    safeSetTextContent('activeEmployees', stats.active_employees || 0);
+                    safeSetTextContent('todayAttendance', stats.today_attendance || 0);
+                    safeSetTextContent('attendanceRate', stats.attendance_rate || 0);
+                    safeSetTextContent('pendingLeaves', stats.pending_leaves || 0);
+                    safeSetTextContent('lateToday', stats.late_today || 0);
                     
                     // Update pending badge
                     const pendingBadge = document.getElementById('pendingBadge');
@@ -914,7 +914,7 @@
                 if (!container) return;
                 
                 if (data.success && data.data && data.data.length > 0) {
-                    if (lateCount) lateCount.textContent = data.count || data.data.length;
+                    if (lateCount) lateCount.textContent = data.data.length;
                     if (lateCountBadge) lateCountBadge.classList.remove('hidden');
                     
                     let html = `
@@ -925,25 +925,13 @@
                                         <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Kode</th>
                                         <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Nama</th>
                                         <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Check-in</th>
-                                        <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Shift</th>
-                                        <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Terlambat</th>
+                                        <th class="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                     `;
                     
                     data.data.forEach(emp => {
-                        // Warna berdasarkan tingkat keterlambatan
-                        let lateColor = 'text-yellow-600';
-                        let lateBg = 'bg-yellow-50';
-                        if (emp.terlambat_menit > 30) {
-                            lateColor = 'text-red-600';
-                            lateBg = 'bg-red-50';
-                        } else if (emp.terlambat_menit <= 15) {
-                            lateColor = 'text-orange-600';
-                            lateBg = 'bg-orange-50';
-                        }
-                        
                         html += `
                             <tr class="border-b hover:bg-gray-50">
                                 <td class="py-3 px-4">
@@ -952,15 +940,10 @@
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 font-medium text-gray-800">${emp.nama}</td>
-                                <td class="py-3 px-4 text-gray-600">${emp.check_in}</td>
+                                <td class="py-3 px-4 text-gray-600">${emp.check_in || '-'}</td>
                                 <td class="py-3 px-4">
-                                    <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
-                                        ${emp.jam_masuk}
-                                    </span>
-                                </td>
-                                <td class="py-3 px-4">
-                                    <span class="px-3 py-1 ${lateBg} ${lateColor} rounded-full text-sm font-medium">
-                                        <i class="fas fa-clock mr-1"></i>${emp.terlambat_menit} menit
+                                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                        <i class="fas fa-clock mr-1"></i>Terlambat
                                     </span>
                                 </td>
                             </tr>

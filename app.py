@@ -282,13 +282,13 @@ def api_face_status():
 
 @app.route("/api/face-cache-stats")
 def api_face_cache():
-
+    
     total_employee = Employee.query.count()
-
+    
     total_face = FaceEncoding.query.count()
-
+    
     rate = 0
-
+    
     if total_employee > 0:
         rate = round(total_face / total_employee * 100)
 
