@@ -19,7 +19,7 @@ class Config:
     if database_url:
         if database_url.startswith("mysql://"):
             return database_url.replace("mysql://", "mysql+mysqlconnector://", 1)
-        return database_url
+            return database_url
 
     raise Exception("DATABASE_URL not found")
 
