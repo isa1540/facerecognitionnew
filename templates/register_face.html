@@ -9,69 +9,41 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f0f4f8; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f0f4f8; min-height: 100vh; }
+        
         .camera-container { position: relative; background: #1a1a2e; border-radius: 16px; overflow: hidden; }
-        .face-overlay { position: absolute; border: 3px solid rgba(59, 130, 246, 0.8); border-radius: 10px; }
-        .step-card { transition: all 0.3s ease; }
-        .step-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .registration-success { animation: successPulse 2s infinite; }
-        @keyframes successPulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        .capture-preview { transition: transform 0.3s ease; }
-        .capture-preview:hover { transform: scale(1.05); }
+        .camera-container video { width: 100%; height: 400px; object-fit: cover; }
+        .face-overlay { position: absolute; border: 3px solid rgba(59, 130, 246, 0.8); border-radius: 12px; }
+        .step-card { transition: all 0.3s ease; cursor: default; }
+        .step-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .capture-preview { transition: transform 0.2s ease; }
+        .capture-preview:hover { transform: scale(1.03); }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
         .scrollbar-thin::-webkit-scrollbar { width: 4px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        .quality-indicator { transition: all 0.3s ease; }
+        
+        .glass-effect { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px); }
         .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); }
         .btn-primary:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
         .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
         .btn-success:hover { background: linear-gradient(135deg, #16a34a, #15803d); }
         .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-        .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        
+        .employee-card { transition: all 0.2s ease; cursor: pointer; }
+        .employee-card:hover { transform: translateX(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .employee-card.selected { border-color: #3b82f6 !important; background: #eff6ff !important; }
+        
+        .progress-bar-animated { transition: width 0.5s ease-in-out; }
+        .toast-notification { animation: slideInRight 0.4s ease-out; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
         .loading-spinner { animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* Employee card hover effect */
-        .employee-card {
-            transition: all 0.3s ease;
-        }
-        .employee-card:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-        .employee-card.selected {
-            border-color: #3b82f6 !important;
-            background: #eff6ff !important;
-        }
-        
-        /* Progress bar animation */
-        .progress-bar-animated {
-            transition: width 0.5s ease-in-out;
-        }
-        
-        /* Toast notification */
-        .toast-notification {
-            animation: slideInRight 0.5s ease-out;
-        }
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideOutRight {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
-        }
-        
-        /* Camera flash effect */
-        .camera-flash {
-            animation: flash 0.3s ease-out;
-        }
-        @keyframes flash {
-            0% { background: rgba(255, 255, 255, 0.8); }
-            100% { background: transparent; }
-        }
+        .success-check { animation: successPulse 2s ease-in-out infinite; }
+        @keyframes successPulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -104,7 +76,7 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Registration Steps -->
+            <!-- Left Column -->
             <div class="lg:col-span-2">
                 <!-- Progress & Status -->
                 <div class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
@@ -147,7 +119,6 @@
                             <p class="font-medium text-blue-800">1. Pilih Karyawan</p>
                             <p class="text-xs text-blue-600 mt-1">Pilih karyawan yang akan diregistrasi</p>
                         </div>
-                        
                         <div id="step2" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
                             <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <i class="fas fa-camera text-gray-400 text-xl"></i>
@@ -155,7 +126,6 @@
                             <p class="font-medium text-gray-600">2. Ambil Gambar</p>
                             <p class="text-xs text-gray-500 mt-1">Ambil foto wajah karyawan</p>
                         </div>
-                        
                         <div id="step3" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
                             <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <i class="fas fa-check-circle text-gray-400 text-xl"></i>
@@ -163,7 +133,6 @@
                             <p class="font-medium text-gray-600">3. Validasi</p>
                             <p class="text-xs text-gray-500 mt-1">Validasi kualitas gambar</p>
                         </div>
-                        
                         <div id="step4" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
                             <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <i class="fas fa-database text-gray-400 text-xl"></i>
@@ -181,21 +150,17 @@
                     </h3>
                     
                     <div class="mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            Cari Karyawan
-                        </label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Cari Karyawan</label>
                         <div class="relative">
                             <input type="text" id="searchEmployee" 
                                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                    placeholder="Cari berdasarkan nama, kode, atau email..."
                                    onkeyup="searchEmployees()">
-                            <div class="absolute right-3 top-3">
-                                <i class="fas fa-search text-gray-400"></i>
-                            </div>
+                            <div class="absolute right-3 top-3"><i class="fas fa-search text-gray-400"></i></div>
                         </div>
                     </div>
                     
-                    <div class="max-h-96 overflow-y-auto scrollbar-thin pr-2">
+                    <div class="max-h-96 overflow-y-auto scrollbar-thin pr-2" id="employeeListContainer">
                         <div id="employeeList" class="space-y-3">
                             <div class="text-center py-8">
                                 <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
@@ -217,7 +182,7 @@
 
                 <!-- Step 2: Face Capture -->
                 <div id="step2Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
-                    <div class="flex justify-between items-center mb-6">
+                    <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
                         <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                             <i class="fas fa-camera mr-2 text-blue-600"></i> Ambil Gambar Wajah
                         </h3>
@@ -233,13 +198,12 @@
                         </div>
                     </div>
 
-                    <!-- Camera Container -->
+                    <!-- Camera -->
                     <div class="relative">
                         <div class="camera-container bg-gray-900 rounded-xl overflow-hidden">
-                            <video id="video" autoplay playsinline class="w-full h-96 object-cover"></video>
+                            <video id="video" autoplay playsinline></video>
                             <canvas id="canvas" class="hidden"></canvas>
                             
-                            <!-- Face Overlay Guide -->
                             <div class="face-overlay absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-80">
                                 <div class="absolute inset-0 border-2 border-white opacity-30 rounded-lg"></div>
                                 <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
@@ -249,7 +213,6 @@
                                 </div>
                             </div>
 
-                            <!-- Quality Indicators -->
                             <div id="qualityIndicators" class="absolute top-4 left-4 space-y-2 hidden">
                                 <div class="flex items-center bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg backdrop-blur-sm">
                                     <i class="fas fa-sun mr-2 text-yellow-400"></i>
@@ -265,7 +228,6 @@
                                 </div>
                             </div>
 
-                            <!-- Capture Indicator -->
                             <div id="captureIndicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 hidden">
                                 <div class="text-center">
                                     <div class="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -274,23 +236,19 @@
                             </div>
                         </div>
 
-                        <!-- Camera Controls -->
                         <div class="flex flex-wrap justify-center gap-4 mt-6">
                             <button id="startCameraBtn" onclick="startCamera()" 
                                     class="px-6 py-3 btn-primary text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
                                 <i class="fas fa-video mr-2"></i> Hidupkan Kamera
                             </button>
-                            
                             <button id="captureBtn" onclick="captureFace()" disabled
                                     class="px-6 py-3 btn-success text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                                 <i class="fas fa-camera mr-2"></i> Ambil Gambar
                             </button>
-                            
                             <button onclick="stopCamera()" 
                                     class="px-6 py-3 btn-danger text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
                                 <i class="fas fa-stop mr-2"></i> Matikan
                             </button>
-                            
                             <button onclick="switchCamera()" 
                                     class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
                                 <i class="fas fa-sync-alt mr-2"></i> Ganti Kamera
@@ -310,8 +268,7 @@
                     </div>
                     
                     <div class="mt-6 flex justify-between">
-                        <button onclick="goToStep1()" 
-                                class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                        <button onclick="goToStep1()" class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
                             <i class="fas fa-arrow-left mr-2"></i> Kembali
                         </button>
                         <button id="nextToStep3" onclick="goToStep3()" disabled
@@ -329,7 +286,6 @@
                     
                     <div class="mb-6">
                         <p class="text-gray-600 mb-4">Validasi kualitas gambar untuk memastikan wajah dapat dikenali dengan baik:</p>
-                        
                         <div id="validationResults" class="space-y-4">
                             <div class="text-center py-8">
                                 <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
@@ -342,29 +298,16 @@
                         <h4 class="font-medium text-gray-700 mb-4">Rekomendasi:</h4>
                         <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
                             <ul class="space-y-2 text-sm text-gray-700">
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Ambil gambar dengan pencahayaan yang cukup</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Pastikan wajah menghadap lurus ke kamera</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Hindari bayangan pada wajah</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Minimal ambil 3 gambar dari sudut berbeda</span>
-                                </li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Ambil gambar dengan pencahayaan yang cukup</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Pastikan wajah menghadap lurus ke kamera</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Hindari bayangan pada wajah</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Minimal ambil 3 gambar dari sudut berbeda</li>
                             </ul>
                         </div>
                     </div>
                     
                     <div class="mt-6 flex justify-between">
-                        <button onclick="goToStep2()" 
-                                class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                        <button onclick="goToStep2()" class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
                             <i class="fas fa-arrow-left mr-2"></i> Kembali
                         </button>
                         <button id="nextToStep4" onclick="goToStep4()" disabled
@@ -374,7 +317,7 @@
                     </div>
                 </div>
 
-                <!-- Step 4: Save to Database -->
+                <!-- Step 4: Save -->
                 <div id="step4Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-database mr-2 text-blue-600"></i> Simpan ke Database
@@ -387,7 +330,6 @@
                             </div>
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Siap Menyimpan Data</h4>
                             <p class="text-gray-600 mb-6">Data wajah akan disimpan ke database sistem</p>
-                            
                             <div class="max-w-md mx-auto bg-gray-50 p-6 rounded-xl">
                                 <div class="space-y-4">
                                     <div class="flex justify-between items-center">
@@ -414,7 +356,6 @@
                             </div>
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Menyimpan Data...</h4>
                             <p class="text-gray-600 mb-6">Harap tunggu, data sedang diproses</p>
-                            
                             <div class="max-w-md mx-auto">
                                 <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
                                     <div id="saveProgressBar" class="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full progress-bar-animated" style="width: 0%"></div>
@@ -426,12 +367,11 @@
                     
                     <div id="saveSuccess" class="hidden">
                         <div class="text-center py-8">
-                            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 success-check">
                                 <i class="fas fa-check text-green-600 text-4xl"></i>
                             </div>
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Berhasil!</h4>
                             <p class="text-gray-600 mb-6" id="saveSuccessMessage">Data wajah berhasil disimpan</p>
-                            
                             <div class="max-w-md mx-auto bg-green-50 p-6 rounded-xl border border-green-200">
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
@@ -446,20 +386,14 @@
                                         <span class="text-gray-700">Waktu:</span>
                                         <span class="font-semibold" id="successTime">-</span>
                                     </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-gray-700">Status Cache:</span>
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Aktif</span>
-                                    </div>
                                 </div>
                             </div>
-                            
                             <div class="mt-6">
                                 <button onclick="startNewRegistration()" 
                                         class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg">
                                     <i class="fas fa-plus mr-2"></i> Registrasi Baru
                                 </button>
-                                <a href="/dashboard" 
-                                   class="ml-3 px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                                <a href="/dashboard" class="ml-3 px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
                                     <i class="fas fa-home mr-2"></i> Dashboard
                                 </a>
                             </div>
@@ -473,7 +407,6 @@
                             </div>
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Gagal</h4>
                             <p class="text-gray-600 mb-6" id="saveErrorMessage">Terjadi kesalahan saat menyimpan data</p>
-                            
                             <div class="max-w-md mx-auto bg-red-50 p-6 rounded-xl border border-red-200">
                                 <p class="text-sm text-red-700 mb-4" id="errorDetails"></p>
                                 <button onclick="retrySave()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
@@ -496,21 +429,19 @@
                 </div>
             </div>
 
-            <!-- Right Column: Info & Preview -->
+            <!-- Right Column -->
             <div class="space-y-6">
-                <!-- Selected Employee Info -->
+                <!-- Employee Info -->
                 <div class="glass-effect rounded-2xl shadow-lg p-6 border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-info-circle mr-2 text-blue-600"></i> Informasi Karyawan
                     </h3>
-                    
                     <div id="selectedEmployeeInfo" class="text-center py-8">
                         <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="fas fa-user text-gray-400 text-3xl"></i>
                         </div>
                         <p class="text-gray-600">Pilih karyawan untuk melihat informasi</p>
                     </div>
-
                     <div id="employeeDetails" class="hidden">
                         <div class="space-y-4">
                             <div class="text-center mb-6">
@@ -520,7 +451,6 @@
                                 <h4 class="text-lg font-bold text-gray-800" id="employeeName">-</h4>
                                 <p class="text-sm text-gray-600" id="employeeCode">-</p>
                             </div>
-                            
                             <div class="space-y-3">
                                 <div class="flex justify-between items-center pb-3 border-b border-gray-100">
                                     <span class="text-gray-600">Email</span>
@@ -530,96 +460,56 @@
                                     <span class="text-gray-600">Shift</span>
                                     <span class="font-medium" id="employeeShift">-</span>
                                 </div>
-                                <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-                                    <span class="text-gray-600">Status</span>
-                                    <span id="employeeStatus" class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Aktif</span>
-                                </div>
                                 <div class="flex justify-between items-center">
                                     <span class="text-gray-600">Registrasi</span>
                                     <span id="faceRegistered" class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Belum</span>
                                 </div>
                             </div>
                         </div>
-                        
                         <div class="mt-8 pt-6 border-t border-gray-100">
-                            <h4 class="font-medium text-gray-700 mb-3">Instruksi Registrasi:</h4>
+                            <h4 class="font-medium text-gray-700 mb-3">Instruksi:</h4>
                             <ul class="space-y-2 text-sm text-gray-600">
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Pastikan karyawan sudah terdaftar di sistem</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Ambil gambar dalam kondisi pencahayaan baik</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Minimal 3 gambar dari sudut berbeda</span>
-                                </li>
-                                <li class="flex items-center">
-                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                                    <span>Wajah harus menghadap lurus ke kamera</span>
-                                </li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Pastikan karyawan terdaftar</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Ambil 3+ gambar dengan pencahayaan baik</li>
+                                <li class="flex items-center"><i class="fas fa-check-circle text-green-500 mr-2"></i>Wajah menghadap lurus ke kamera</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <!-- Face Quality Guide -->
+                <!-- Quality Guide -->
                 <div class="glass-effect rounded-2xl shadow-lg p-6 border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-chart-line mr-2 text-blue-600"></i> Panduan Kualitas
                     </h3>
-                    
                     <div class="space-y-4">
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Pencahayaan</span>
                                 <span class="font-medium text-green-600">Optimal</span>
                             </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full" style="width: 90%"></div>
-                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-green-500 h-2 rounded-full" style="width:90%"></div></div>
                         </div>
-                        
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Ketajaman</span>
                                 <span class="font-medium text-blue-600">Tajam</span>
                             </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
-                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width:85%"></div></div>
                         </div>
-                        
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Posisi Wajah</span>
                                 <span class="font-medium text-purple-600">Tengah</span>
                             </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-purple-500 h-2 rounded-full" style="width: 95%"></div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <div class="flex justify-between text-sm mb-1">
-                                <span class="text-gray-600">Ukuran Wajah</span>
-                                <span class="font-medium text-yellow-600">Optimal</span>
-                            </div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-yellow-500 h-2 rounded-full" style="width: 88%"></div>
-                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-purple-500 h-2 rounded-full" style="width:95%"></div></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- System Status -->
                 <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-lg p-6 text-white">
-                    <h3 class="text-lg font-semibold mb-4 flex items-center">
-                        <i class="fas fa-server mr-2"></i> Status Sistem
-                    </h3>
-                    
+                    <h3 class="text-lg font-semibold mb-4 flex items-center"><i class="fas fa-server mr-2"></i> Status Sistem</h3>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
                             <span>Cache Wajah</span>
@@ -634,13 +524,12 @@
                             <span class="font-bold text-green-300">Online</span>
                         </div>
                     </div>
-                    
                     <div class="mt-6 pt-4 border-t border-blue-500">
                         <div class="flex justify-between text-sm">
                             <span>Kapasitas Sistem:</span>
                             <div class="flex items-center">
                                 <div class="w-20 bg-blue-500 bg-opacity-30 rounded-full h-2 mr-2">
-                                    <div class="bg-green-400 h-2 rounded-full" style="width: 65%"></div>
+                                    <div class="bg-green-400 h-2 rounded-full" style="width:65%"></div>
                                 </div>
                                 <span class="font-bold">65%</span>
                             </div>
@@ -658,7 +547,6 @@
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
-                    
                     <div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin pr-2" id="recentRegistrations">
                         <div class="text-center py-4">
                             <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
@@ -686,54 +574,53 @@
                         <i class="fas fa-bolt mr-2 text-yellow-500"></i>
                         <span>Proses Cepat</span>
                     </div>
-                    <div class="flex items-center text-sm text-gray-600">
-                        <i class="fas fa-database mr-2 text-blue-500"></i>
-                        <span>Backup Otomatis</span>
-                    </div>
                 </div>
             </div>
         </div>
     </footer>
 
     <script>
-        // Global variables
+        // ===============================
+        // GLOBAL VARIABLES
+        // ===============================
         let videoStream = null;
         let facingMode = 'user';
         let selectedEmployee = null;
         let capturedImages = [];
         let currentStep = 1;
-        
-        // DOM Elements
+        let qualityInterval = null;
+
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const startCameraBtn = document.getElementById('startCameraBtn');
         const captureBtn = document.getElementById('captureBtn');
-        const captureIndicator = document.getElementById('captureIndicator');
-        const qualityIndicators = document.getElementById('qualityIndicators');
-        
-        // Initialize on page load
+
+        // ===============================
+        // INITIALIZATION
+        // ===============================
         document.addEventListener('DOMContentLoaded', function() {
             updateDateTime();
             setInterval(updateDateTime, 1000);
-            
             loadEmployees();
             loadRecentRegistrations();
             loadCacheCount();
             updateProgress();
         });
-        
-        // Update date and time
+
+        // ===============================
+        // DATE TIME
+        // ===============================
         function updateDateTime() {
             const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            
-            document.getElementById('currentTime').textContent = 
-                now.toLocaleTimeString('id-ID', { hour12: false });
-            document.getElementById('currentDate').textContent = 
-                now.toLocaleDateString('id-ID', options);
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('id-ID', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            });
         }
-        
-        // Load employees from API
+
+        // ===============================
+        // LOAD EMPLOYEES
+        // ===============================
         async function loadEmployees() {
             try {
                 const response = await fetch('/api/karyawan');
@@ -743,18 +630,16 @@
                     const container = document.getElementById('employeeList');
                     let html = '';
                     
-                    data.data.forEach(employee => {
-                        const hasFace = employee.face_registered || false;
-                        const shiftName = employee.shift_nama || 'Belum diatur';
-                        
+                    data.data.forEach(emp => {
+                        const hasFace = emp.face_registered || false;
                         html += `
                             <div class="employee-card border border-gray-200 rounded-xl p-4 hover:bg-blue-50 cursor-pointer transition"
-                                 onclick="selectEmployee(${employee.id})"
-                                 data-id="${employee.id}"
-                                 data-name="${employee.nama}"
-                                 data-code="${employee.kode}"
-                                 data-email="${employee.email || '-'}"
-                                 data-shift="${shiftName}"
+                                 onclick="selectEmployee(${emp.id})"
+                                 data-id="${emp.id}"
+                                 data-name="${emp.nama}"
+                                 data-code="${emp.kode}"
+                                 data-email="${emp.email || '-'}"
+                                 data-shift="${emp.shift_nama || 'Belum diatur'}"
                                  data-face="${hasFace}">
                                 <div class="flex items-center">
                                     <div class="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mr-4">
@@ -763,8 +648,8 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="flex justify-between items-start">
                                             <div>
-                                                <p class="font-medium text-gray-800 truncate">${employee.nama}</p>
-                                                <p class="text-sm text-gray-600">${employee.kode}</p>
+                                                <p class="font-medium text-gray-800 truncate">${emp.nama}</p>
+                                                <p class="text-sm text-gray-600">${emp.kode}</p>
                                             </div>
                                             <div>
                                                 ${hasFace ? 
@@ -774,7 +659,7 @@
                                         </div>
                                         <div class="flex items-center text-xs text-gray-500 mt-2">
                                             <i class="fas fa-envelope mr-1"></i>
-                                            <span class="truncate">${employee.email || 'Tidak ada email'}</span>
+                                            <span class="truncate">${emp.email || 'Tidak ada email'}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -783,11 +668,7 @@
                     });
                     
                     container.innerHTML = html;
-                    
-                    // Re-apply search filter
                     searchEmployees();
-                } else {
-                    showError('Gagal memuat data karyawan');
                 }
             } catch (error) {
                 console.error('Error loading employees:', error);
@@ -802,50 +683,47 @@
                 `;
             }
         }
-        
-        // Search employees
+
+        // ===============================
+        // SEARCH EMPLOYEES
+        // ===============================
         function searchEmployees() {
             const searchTerm = document.getElementById('searchEmployee').value.toLowerCase();
-            const cards = document.querySelectorAll('.employee-card');
-            
-            cards.forEach(card => {
+            document.querySelectorAll('.employee-card').forEach(card => {
                 const name = card.querySelector('.font-medium').textContent.toLowerCase();
                 const code = card.querySelector('.text-sm.text-gray-600').textContent.toLowerCase();
                 const email = card.querySelector('.truncate').textContent.toLowerCase();
-                
-                if (name.includes(searchTerm) || code.includes(searchTerm) || email.includes(searchTerm)) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
-                }
+                card.style.display = (name.includes(searchTerm) || code.includes(searchTerm) || email.includes(searchTerm)) ? '' : 'none';
             });
         }
-        
-        // Select employee
+
+        // ===============================
+        // SELECT EMPLOYEE
+        // ===============================
         function selectEmployee(employeeId) {
-            document.querySelectorAll('.employee-card').forEach(card => {
-                card.classList.remove('selected', 'border-blue-500', 'bg-blue-50');
+            document.querySelectorAll('.employee-card').forEach(c => {
+                c.classList.remove('selected', 'border-blue-500', 'bg-blue-50');
             });
             
-            const selectedCard = document.querySelector(`.employee-card[data-id="${employeeId}"]`);
-            if (selectedCard) {
-                selectedCard.classList.add('selected', 'border-blue-500', 'bg-blue-50');
-                
+            const card = document.querySelector(`.employee-card[data-id="${employeeId}"]`);
+            if (card) {
+                card.classList.add('selected', 'border-blue-500', 'bg-blue-50');
                 selectedEmployee = {
                     id: parseInt(employeeId),
-                    name: selectedCard.dataset.name,
-                    code: selectedCard.dataset.code,
-                    email: selectedCard.dataset.email,
-                    shift: selectedCard.dataset.shift,
-                    hasFace: selectedCard.dataset.face === 'true'
+                    name: card.dataset.name,
+                    code: card.dataset.code,
+                    email: card.dataset.email,
+                    shift: card.dataset.shift,
+                    hasFace: card.dataset.face === 'true'
                 };
-                
                 updateSelectedEmployeeInfo();
                 document.getElementById('nextToStep2').disabled = false;
             }
         }
-        
-        // Update selected employee info
+
+        // ===============================
+        // UPDATE EMPLOYEE INFO
+        // ===============================
         function updateSelectedEmployeeInfo() {
             if (!selectedEmployee) return;
             
@@ -857,82 +735,79 @@
             document.getElementById('employeeEmail').textContent = selectedEmployee.email || '-';
             document.getElementById('employeeShift').textContent = selectedEmployee.shift;
             
-            const faceBadge = document.getElementById('faceRegistered');
-            faceBadge.textContent = selectedEmployee.hasFace ? 'Sudah' : 'Belum';
-            faceBadge.className = selectedEmployee.hasFace ? 
+            const badge = document.getElementById('faceRegistered');
+            badge.textContent = selectedEmployee.hasFace ? 'Sudah' : 'Belum';
+            badge.className = selectedEmployee.hasFace ? 
                 'px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full' : 
                 'px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full';
             
             document.getElementById('saveEmployeeName').textContent = selectedEmployee.name;
             document.getElementById('selectedEmployeeCount').textContent = '1';
         }
-        
-        // Update progress
+
+        // ===============================
+        // PROGRESS
+        // ===============================
         function updateProgress() {
-            for (let i = 1; i <= 4; i++) {
-                const stepCard = document.getElementById(`step${i}`);
-                const icon = stepCard.querySelector('i');
-                const title = stepCard.querySelector('p.font-medium');
-                const subtitle = stepCard.querySelector('p.text-xs');
-                const iconContainer = stepCard.querySelector('.w-12');
-                
-                if (i < currentStep) {
-                    // Completed
-                    stepCard.className = 'step-card bg-green-50 border border-green-200 p-4 rounded-xl text-center shadow-sm';
-                    iconContainer.className = 'w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3';
-                    icon.className = 'fas fa-check text-green-600 text-xl';
-                    title.className = 'font-medium text-green-800';
-                    subtitle.className = 'text-xs text-green-600 mt-1';
-                } else if (i === currentStep) {
-                    // Current
-                    stepCard.className = 'step-card bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm';
-                    iconContainer.className = 'w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3';
-                    icon.className = i === 1 ? 'fas fa-user text-blue-600 text-xl' :
-                                    i === 2 ? 'fas fa-camera text-blue-600 text-xl' :
-                                    i === 3 ? 'fas fa-check-circle text-blue-600 text-xl' :
-                                    'fas fa-database text-blue-600 text-xl';
-                    title.className = 'font-medium text-blue-800';
-                    subtitle.className = 'text-xs text-blue-600 mt-1';
-                } else {
-                    // Future
-                    stepCard.className = 'step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center';
-                    iconContainer.className = 'w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3';
-                    icon.className = i === 1 ? 'fas fa-user text-gray-400 text-xl' :
-                                    i === 2 ? 'fas fa-camera text-gray-400 text-xl' :
-                                    i === 3 ? 'fas fa-check-circle text-gray-400 text-xl' :
-                                    'fas fa-database text-gray-400 text-xl';
-                    title.className = 'font-medium text-gray-600';
-                    subtitle.className = 'text-xs text-gray-500 mt-1';
-                }
-            }
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            const icons = ['user', 'camera', 'check-circle', 'database'];
             
-            const progressPercent = ((currentStep - 1) / 3) * 100;
-            document.getElementById('progressBar').style.width = `${progressPercent}%`;
+            steps.forEach((id, index) => {
+                const step = document.getElementById(id);
+                const num = index + 1;
+                const isCompleted = num < currentStep;
+                const isCurrent = num === currentStep;
+                
+                step.className = `step-card p-4 rounded-xl text-center shadow-sm border ${
+                    isCompleted ? 'bg-green-50 border-green-200' :
+                    isCurrent ? 'bg-blue-50 border-blue-200' :
+                    'bg-gray-50 border-gray-200'
+                }`;
+                
+                const iconContainer = step.querySelector('.w-12');
+                iconContainer.className = `w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                    isCompleted ? 'bg-green-100' :
+                    isCurrent ? 'bg-blue-100' :
+                    'bg-gray-100'
+                }`;
+                
+                const icon = step.querySelector('i');
+                icon.className = `fas fa-${isCompleted ? 'check' : icons[index]} ${
+                    isCompleted ? 'text-green-600' :
+                    isCurrent ? 'text-blue-600' :
+                    'text-gray-400'
+                } text-xl`;
+                
+                const title = step.querySelector('p.font-medium');
+                title.className = `font-medium ${
+                    isCompleted ? 'text-green-800' :
+                    isCurrent ? 'text-blue-800' :
+                    'text-gray-600'
+                }`;
+                
+                const subtitle = step.querySelector('p.text-xs');
+                subtitle.className = `text-xs mt-1 ${
+                    isCompleted ? 'text-green-600' :
+                    isCurrent ? 'text-blue-600' :
+                    'text-gray-500'
+                }`;
+            });
+            
+            document.getElementById('progressBar').style.width = `${((currentStep - 1) / 3) * 100}%`;
             document.getElementById('progressText').textContent = `${currentStep}/4 Langkah`;
             
-            // Show/hide step content
             for (let i = 1; i <= 4; i++) {
-                const stepContent = document.getElementById(`step${i}Content`);
-                if (i === currentStep) {
-                    stepContent.classList.remove('hidden');
-                } else {
-                    stepContent.classList.add('hidden');
-                }
+                const content = document.getElementById(`step${i}Content`);
+                content.classList.toggle('hidden', i !== currentStep);
             }
         }
-        
-        // Navigation functions
+
+        // ===============================
+        // NAVIGATION
+        // ===============================
         function goToStep2() {
-            if (!selectedEmployee) {
-                alert('Pilih karyawan terlebih dahulu');
-                return;
-            }
-            
-            if (selectedEmployee.hasFace) {
-                if (!confirm('Karyawan ini sudah memiliki wajah terdaftar. Apakah Anda ingin memperbarui data wajah?')) {
-                    return;
-                }
-            }
+            if (!selectedEmployee) return alert('Pilih karyawan terlebih dahulu');
+            if (selectedEmployee.hasFace && !confirm('Karyawan ini sudah memiliki wajah terdaftar. Update?')) return;
             
             currentStep = 2;
             updateProgress();
@@ -940,45 +815,39 @@
             updateCapturePreviews();
             document.getElementById('nextToStep3').disabled = true;
         }
-        
+
         function goToStep3() {
-            if (capturedImages.length === 0) {
-                alert('Ambil minimal 1 gambar terlebih dahulu');
-                return;
-            }
-            
+            if (capturedImages.length === 0) return alert('Ambil minimal 1 gambar terlebih dahulu');
             currentStep = 3;
             updateProgress();
             validateCaptures();
             document.getElementById('nextToStep4').disabled = false;
         }
-        
+
         function goToStep4() {
             currentStep = 4;
             updateProgress();
             document.getElementById('saveImageCount').textContent = capturedImages.length;
         }
-        
+
         function goToStep1() {
             currentStep = 1;
             updateProgress();
             stopCamera();
         }
-        
-        // Camera functions
+
+        // ===============================
+        // CAMERA
+        // ===============================
         async function startCamera() {
             try {
-                const constraints = {
-                    video: {
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    },
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
-                };
+                });
                 
-                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = videoStream;
+                videoStream = stream;
+                video.srcObject = stream;
                 
                 startCameraBtn.disabled = true;
                 captureBtn.disabled = false;
@@ -986,16 +855,14 @@
                     '<i class="fas fa-video text-green-500 mr-2"></i><span class="text-sm text-green-600">Kamera: Aktif</span>';
                 
                 startQualityMonitoring();
-                
             } catch (error) {
-                console.error('Camera Error:', error);
                 alert('Gagal mengakses kamera: ' + error.message);
             }
         }
-        
+
         function stopCamera() {
             if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
+                videoStream.getTracks().forEach(t => t.stop());
                 video.srcObject = null;
                 videoStream = null;
                 
@@ -1004,112 +871,84 @@
                 document.getElementById('cameraStatus').innerHTML = 
                     '<i class="fas fa-video text-gray-400 mr-2"></i><span class="text-sm text-gray-600">Kamera: Off</span>';
                 
-                qualityIndicators.classList.add('hidden');
+                if (qualityInterval) {
+                    clearInterval(qualityInterval);
+                    qualityInterval = null;
+                }
+                document.getElementById('qualityIndicators').classList.add('hidden');
             }
         }
-        
+
         async function switchCamera() {
-            if (!videoStream) {
-                alert('Nyalakan kamera terlebih dahulu');
-                return;
-            }
-            
-            videoStream.getTracks().forEach(track => track.stop());
+            if (!videoStream) return alert('Nyalakan kamera terlebih dahulu');
+            videoStream.getTracks().forEach(t => t.stop());
             facingMode = facingMode === 'user' ? 'environment' : 'user';
             await startCamera();
         }
-        
+
         function startQualityMonitoring() {
-            qualityIndicators.classList.remove('hidden');
+            document.getElementById('qualityIndicators').classList.remove('hidden');
             
-            setInterval(() => {
-                if (videoStream) {
-                    const brightness = Math.floor(Math.random() * 30) + 70;
-                    const sharpness = Math.floor(Math.random() * 25) + 75;
-                    const position = Math.floor(Math.random() * 20) + 80;
-                    
-                    document.getElementById('brightnessScore').textContent = `${brightness}%`;
-                    document.getElementById('sharpnessScore').textContent = `${sharpness}%`;
-                    document.getElementById('positionScore').textContent = `${position}%`;
-                    
-                    const avgQuality = Math.round((brightness + sharpness + position) / 3);
-                    document.getElementById('qualityScore').textContent = `${avgQuality}%`;
-                    
-                    if (avgQuality >= 80) {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded text-sm font-medium';
-                    } else if (avgQuality >= 60) {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-sm font-medium';
-                    } else {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-red-100 text-red-800 rounded text-sm font-medium';
-                    }
-                }
+            if (qualityInterval) clearInterval(qualityInterval);
+            qualityInterval = setInterval(() => {
+                if (!videoStream) return;
+                
+                const brightness = Math.floor(Math.random() * 30) + 70;
+                const sharpness = Math.floor(Math.random() * 25) + 75;
+                const position = Math.floor(Math.random() * 20) + 80;
+                
+                document.getElementById('brightnessScore').textContent = `${brightness}%`;
+                document.getElementById('sharpnessScore').textContent = `${sharpness}%`;
+                document.getElementById('positionScore').textContent = `${position}%`;
+                
+                const avg = Math.round((brightness + sharpness + position) / 3);
+                const scoreEl = document.getElementById('qualityScore');
+                scoreEl.textContent = `${avg}%`;
+                scoreEl.className = `ml-2 px-2 py-0.5 rounded text-sm font-medium ${
+                    avg >= 80 ? 'bg-green-100 text-green-800' :
+                    avg >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                }`;
             }, 1000);
         }
-        
-        // Capture face
+
+        // ===============================
+        // CAPTURE
+        // ===============================
         async function captureFace() {
-            if (!videoStream) {
-                alert('Nyalakan kamera terlebih dahulu');
-                return;
-            }
+            if (!videoStream) return alert('Nyalakan kamera terlebih dahulu');
             
-            captureIndicator.classList.remove('hidden');
+            document.getElementById('captureIndicator').classList.remove('hidden');
             
             setTimeout(() => {
                 try {
-                    const context = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                    ctx.drawImage(video, 0, 0);
                     
                     capturedImages.push({
                         id: Date.now(),
-                        data: imageData,
+                        data: canvas.toDataURL('image/jpeg', 0.9),
                         quality: Math.floor(Math.random() * 30) + 70,
                         timestamp: new Date().toLocaleTimeString('id-ID')
                     });
                     
                     updateCapturePreviews();
-                    captureIndicator.classList.add('hidden');
+                    document.getElementById('captureIndicator').classList.add('hidden');
                     
                     if (capturedImages.length >= 3) {
                         document.getElementById('nextToStep3').disabled = false;
                     }
                     
-                    showToast('success', `Gambar berhasil ditambahkan (${capturedImages.length}/3)`);
-                    
-                } catch (error) {
-                    console.error('Capture Error:', error);
-                    captureIndicator.classList.add('hidden');
-                    alert('Gagal mengambil gambar: ' + error.message);
+                    showToast('success', `Gambar ${capturedImages.length}/3 berhasil`);
+                } catch (e) {
+                    document.getElementById('captureIndicator').classList.add('hidden');
+                    alert('Gagal mengambil gambar: ' + e.message);
                 }
             }, 1500);
         }
-        
-        function showToast(type, message) {
-            const toast = document.createElement('div');
-            const colors = {
-                success: 'bg-green-500',
-                error: 'bg-red-500',
-                info: 'bg-blue-500'
-            };
-            toast.className = `fixed top-4 right-4 ${colors[type] || 'bg-gray-500'} text-white px-4 py-3 rounded-xl shadow-lg z-50 toast-notification`;
-            toast.innerHTML = `
-                <div class="flex items-center">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'} mr-2"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.animation = 'slideOutRight 0.5s ease-out';
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        }
-        
+
         function updateCapturePreviews() {
             const container = document.getElementById('capturePreviews');
             
@@ -1124,17 +963,17 @@
             }
             
             let html = '';
-            capturedImages.forEach((image, index) => {
+            capturedImages.forEach((img, i) => {
                 html += `
                     <div class="capture-preview relative border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                        <img src="${image.data}" class="w-full h-32 object-cover">
+                        <img src="${img.data}" class="w-full h-32 object-cover">
                         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
                             <div class="flex justify-between items-center">
-                                <span>#${index + 1}</span>
-                                <span>${image.quality}%</span>
+                                <span>#${i + 1}</span>
+                                <span>${img.quality}%</span>
                             </div>
                         </div>
-                        <button onclick="removeCapture(${image.id})" 
+                        <button onclick="removeCapture(${img.id})" 
                                 class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition">
                             <i class="fas fa-times"></i>
                         </button>
@@ -1154,17 +993,16 @@
             
             container.innerHTML = html;
         }
-        
-        function removeCapture(imageId) {
-            capturedImages = capturedImages.filter(img => img.id !== imageId);
+
+        function removeCapture(id) {
+            capturedImages = capturedImages.filter(img => img.id !== id);
             updateCapturePreviews();
-            
-            if (capturedImages.length < 3) {
-                document.getElementById('nextToStep3').disabled = true;
-            }
+            if (capturedImages.length < 3) document.getElementById('nextToStep3').disabled = true;
         }
-        
-        // Validate captures
+
+        // ===============================
+        // VALIDATE
+        // ===============================
         function validateCaptures() {
             const container = document.getElementById('validationResults');
             
@@ -1172,32 +1010,30 @@
                 let html = '';
                 let allValid = true;
                 
-                capturedImages.forEach((image, index) => {
-                    const isValid = image.quality >= 70;
-                    if (!isValid) allValid = false;
+                capturedImages.forEach((img, i) => {
+                    const valid = img.quality >= 70;
+                    if (!valid) allValid = false;
                     
                     html += `
                         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <div class="flex items-center">
-                                <div class="w-10 h-10 ${isValid ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center mr-3">
-                                    <i class="fas fa-${isValid ? 'check' : 'times'} text-${isValid ? 'green' : 'red'}-600"></i>
+                                <div class="w-10 h-10 ${valid ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-${valid ? 'check' : 'times'} text-${valid ? 'green' : 'red'}-600"></i>
                                 </div>
                                 <div>
-                                    <p class="font-medium">Gambar #${index + 1}</p>
-                                    <p class="text-sm text-gray-600">Kualitas: ${image.quality}%</p>
+                                    <p class="font-medium">Gambar #${i + 1}</p>
+                                    <p class="text-sm text-gray-600">Kualitas: ${img.quality}%</p>
                                 </div>
                             </div>
-                            <div>
-                                <span class="px-3 py-1 ${isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm">
-                                    ${isValid ? 'Valid' : 'Tidak Valid'}
-                                </span>
-                            </div>
+                            <span class="px-3 py-1 ${valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm">
+                                ${valid ? 'Valid' : 'Tidak Valid'}
+                            </span>
                         </div>
                     `;
                 });
                 
                 html += `
-                    <div class="mt-6 p-4 ${allValid ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'} rounded-xl">
+                    <div class="mt-6 p-4 ${allValid ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'} border rounded-xl">
                         <div class="flex items-center">
                             <i class="fas fa-${allValid ? 'check-circle' : 'exclamation-triangle'} ${allValid ? 'text-green-600' : 'text-yellow-600'} mr-3 text-xl"></i>
                             <div>
@@ -1205,9 +1041,7 @@
                                     ${allValid ? 'Semua gambar valid!' : 'Beberapa gambar perlu diperbaiki'}
                                 </p>
                                 <p class="text-sm ${allValid ? 'text-green-700' : 'text-yellow-700'} mt-1">
-                                    ${allValid ? 
-                                        'Gambar dapat digunakan untuk registrasi wajah.' : 
-                                        'Disarankan mengambil ulang gambar dengan kualitas rendah.'}
+                                    ${allValid ? 'Gambar siap disimpan.' : 'Ambil ulang gambar yang tidak valid.'}
                                 </p>
                             </div>
                         </div>
@@ -1216,67 +1050,56 @@
                 
                 container.innerHTML = html;
                 
-                const statusEl = document.getElementById('saveValidationStatus');
-                statusEl.textContent = allValid ? 'Valid' : 'Perlu Perbaikan';
-                statusEl.className = allValid ? 
+                const status = document.getElementById('saveValidationStatus');
+                status.textContent = allValid ? 'Valid' : 'Perlu Perbaikan';
+                status.className = allValid ? 
                     'px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm' : 
                     'px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm';
-                    
             }, 1000);
         }
-        
-        // Save to database
+
+        // ===============================
+        // SAVE TO DATABASE
+        // ===============================
         async function saveToDatabase() {
             if (!selectedEmployee || capturedImages.length === 0) {
-                alert('Data tidak lengkap');
-                return;
+                return alert('Data tidak lengkap');
             }
             
             document.getElementById('saveContent').classList.add('hidden');
             document.getElementById('saveProgress').classList.remove('hidden');
             
             let progress = 0;
-            const progressInterval = setInterval(() => {
+            const interval = setInterval(() => {
                 progress += 10;
                 if (progress > 100) progress = 100;
-                
                 document.getElementById('saveProgressBar').style.width = `${progress}%`;
-                document.getElementById('saveProgressText').textContent = getProgressText(progress);
+                document.getElementById('saveProgressText').textContent = 
+                    progress < 30 ? 'Mempersiapkan data...' :
+                    progress < 60 ? 'Memproses gambar...' :
+                    progress < 90 ? 'Menyimpan encoding...' :
+                    'Menyelesaikan...';
                 
                 if (progress === 100) {
-                    clearInterval(progressInterval);
+                    clearInterval(interval);
                     completeRegistration();
                 }
             }, 200);
         }
-        
-        function getProgressText(progress) {
-            if (progress < 30) return 'Mempersiapkan data...';
-            if (progress < 60) return 'Memproses gambar wajah...';
-            if (progress < 90) return 'Menyimpan encoding wajah...';
-            return 'Menyelesaikan proses...';
-        }
-        
+
         async function completeRegistration() {
             try {
-                // Prepare image data (send as base64)
                 const imageData = capturedImages.map(img => img.data);
                 
-                // Send to server using the existing face/register endpoint
-                const response = await fetch(`/face/register/${selectedEmployee.id}`, {
+                const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        images: imageData
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ images: imageData })
                 });
                 
                 const result = await response.json();
                 
                 if (response.ok && result.message) {
-                    // Success
                     document.getElementById('saveProgress').classList.add('hidden');
                     document.getElementById('saveSuccess').classList.remove('hidden');
                     
@@ -1291,29 +1114,27 @@
                     
                     loadCacheCount();
                     loadRecentRegistrations();
-                    showToast('success', 'Registrasi wajah berhasil!');
+                    showToast('success', 'Registrasi berhasil!');
                 } else {
                     showSaveError(result.error || 'Gagal menyimpan data');
                 }
-                
             } catch (error) {
-                console.error('Registration Error:', error);
-                showSaveError('Gagal menyimpan data: ' + error.message);
+                showSaveError('Error: ' + error.message);
             }
         }
-        
-        function showSaveError(message) {
+
+        function showSaveError(msg) {
             document.getElementById('saveProgress').classList.add('hidden');
             document.getElementById('saveError').classList.remove('hidden');
-            document.getElementById('saveErrorMessage').textContent = message;
-            document.getElementById('errorDetails').textContent = 'Silakan coba lagi atau hubungi administrator.';
+            document.getElementById('saveErrorMessage').textContent = msg;
+            document.getElementById('errorDetails').textContent = 'Silakan coba lagi.';
         }
-        
+
         function retrySave() {
             document.getElementById('saveError').classList.add('hidden');
             document.getElementById('saveContent').classList.remove('hidden');
         }
-        
+
         function startNewRegistration() {
             selectedEmployee = null;
             capturedImages = [];
@@ -1332,42 +1153,44 @@
             stopCamera();
             loadEmployees();
         }
-        
-        // Load cache count
+
+        // ===============================
+        // TOAST
+        // ===============================
+        function showToast(type, message) {
+            const el = document.createElement('div');
+            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
+            el.className = `fixed top-4 right-4 ${colors[type] || 'bg-gray-500'} text-white px-4 py-3 rounded-xl shadow-lg z-50 toast-notification`;
+            el.innerHTML = `<div class="flex items-center"><i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'} mr-2"></i>${message}</div>`;
+            document.body.appendChild(el);
+            setTimeout(() => { el.style.animation = 'slideOutRight 0.4s ease-out'; setTimeout(() => el.remove(), 400); }, 3000);
+        }
+
+        // ===============================
+        // API CALLS
+        // ===============================
         async function loadCacheCount() {
             try {
-                const response = await fetch('/api/face-cache-stats');
-                const data = await response.json();
-                
+                const res = await fetch('/api/face-cache-stats');
+                const data = await res.json();
                 if (data.success) {
                     const count = data.stats.total_cached_faces || 0;
                     document.getElementById('cacheCount').textContent = count;
                     document.getElementById('systemCacheCount').textContent = count;
                 }
-            } catch (error) {
-                console.error('Error loading cache count:', error);
-            }
+            } catch (e) { console.error(e); }
         }
-        
-        // Load recent registrations
+
         async function loadRecentRegistrations() {
             try {
-                const response = await fetch('/api/registrations');
-                const data = await response.json();
-                
+                const res = await fetch('/api/registrations');
+                const data = await res.json();
                 const container = document.getElementById('recentRegistrations');
                 
                 if (data.success && data.data.length > 0) {
                     let html = '';
                     data.data.slice(0, 5).forEach(reg => {
                         const date = new Date(reg.timestamp);
-                        const timeStr = date.toLocaleString('id-ID', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        });
-                        
                         html += `
                             <div class="flex items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
                                 <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center mr-3">
@@ -1377,9 +1200,7 @@
                                     <p class="font-medium text-gray-800 truncate">${reg.employee_name}</p>
                                     <div class="flex items-center text-xs text-gray-500 mt-1">
                                         <i class="fas fa-clock mr-1"></i>
-                                        <span>${timeStr}</span>
-                                        <i class="fas fa-image ml-3 mr-1"></i>
-                                        <span>${reg.images_count || 3} gambar</span>
+                                        <span>${date.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                     </div>
                                 </div>
                                 <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Sukses</span>
@@ -1395,27 +1216,20 @@
                         </div>
                     `;
                 }
-            } catch (error) {
-                console.error('Error loading recent registrations:', error);
+            } catch (e) {
                 document.getElementById('recentRegistrations').innerHTML = `
                     <div class="text-center py-4 text-gray-600">
-                        <i class="fas fa-exclamation-circle mr-2"></i>
-                        Gagal memuat data
+                        <i class="fas fa-exclamation-circle mr-2"></i>Gagal memuat data
                     </div>
                 `;
             }
         }
-        
-        // Handle page visibility
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden && videoStream) {
-                stopCamera();
-            }
-        });
-        
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            // Adjust UI if needed
+
+        // ===============================
+        // CLEANUP
+        // ===============================
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && videoStream) stopCamera();
         });
     </script>
 </body>
