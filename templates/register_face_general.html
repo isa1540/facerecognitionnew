@@ -4,18 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrasi Wajah - Sistem Absensi</title>
-    <!-- Gunakan format url_for Flask agar tidak 404 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        .camera-container { position: relative; }
+        body { font-family: 'Inter', sans-serif; background: #f0f4f8; }
+        .camera-container { position: relative; background: #1a1a2e; border-radius: 16px; overflow: hidden; }
         .face-overlay { position: absolute; border: 3px solid rgba(59, 130, 246, 0.8); border-radius: 10px; }
-        .progress-ring { transform: rotate(-90deg); transform-origin: 50% 50%; }
-        .quality-indicator { transition: all 0.3s ease; }
         .step-card { transition: all 0.3s ease; }
         .step-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .registration-success { animation: successPulse 2s infinite; }
@@ -26,19 +22,69 @@
         .scrollbar-thin::-webkit-scrollbar { width: 4px; }
         .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
         .scrollbar-thin::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        .quality-indicator { transition: all 0.3s ease; }
+        .btn-primary { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-primary:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+        .btn-success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .btn-success:hover { background: linear-gradient(135deg, #16a34a, #15803d); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-danger:hover { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+        .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .loading-spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Employee card hover effect */
+        .employee-card {
+            transition: all 0.3s ease;
+        }
+        .employee-card:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+        .employee-card.selected {
+            border-color: #3b82f6 !important;
+            background: #eff6ff !important;
+        }
+        
+        /* Progress bar animation */
+        .progress-bar-animated {
+            transition: width 0.5s ease-in-out;
+        }
+        
+        /* Toast notification */
+        .toast-notification {
+            animation: slideInRight 0.5s ease-out;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        /* Camera flash effect */
+        .camera-flash {
+            animation: flash 0.3s ease-out;
+        }
+        @keyframes flash {
+            0% { background: rgba(255, 255, 255, 0.8); }
+            100% { background: transparent; }
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen">
+<body>
     <!-- Header -->
-    <header class="bg-white shadow-sm">
+    <header class="glass-effect shadow-sm sticky top-0 z-50 border-b border-gray-200">
         <div class="container mx-auto px-4 py-4">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="flex items-center mb-4 md:mb-0">
-                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                        <i class="fas fa-fingerprint text-white text-xl"></i>
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center mr-4 shadow-lg">
+                        <i class="fas fa-fingerprint text-white text-2xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-800">Registrasi Wajah</h1>
+                        <h1 class="text-2xl font-bold text-gray-800">Registrasi Wajah</h1>
                         <p class="text-sm text-gray-600">Sistem Pendaftaran Wajah Karyawan</p>
                     </div>
                 </div>
@@ -47,8 +93,8 @@
                         <p class="text-sm font-medium text-gray-800" id="currentTime">--:--:--</p>
                         <p class="text-xs text-gray-600" id="currentDate">-- --- ----</p>
                     </div>
-                    <a href="/dashboard" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition duration-300">
-                        <i class="fas fa-arrow-left mr-2"></i>Kembali ke Dashboard
+                    <a href="/dashboard" class="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-medium transition duration-300 shadow-md hover:shadow-lg">
+                        <i class="fas fa-arrow-left mr-2"></i>Kembali
                     </a>
                 </div>
             </div>
@@ -61,7 +107,7 @@
             <!-- Left Column: Registration Steps -->
             <div class="lg:col-span-2">
                 <!-- Progress & Status -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
+                <div class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                         <div>
                             <h2 class="text-xl font-bold text-gray-800">Pendaftaran Wajah Karyawan</h2>
@@ -70,10 +116,10 @@
                         <div class="mt-4 md:mt-0">
                             <div class="flex items-center space-x-4">
                                 <div class="flex items-center">
-                                    <span class="status-dot bg-green-500 mr-2"></span>
+                                    <span class="status-dot bg-green-500 mr-2 animate-pulse"></span>
                                     <span class="text-sm text-gray-700">Sistem Aktif</span>
                                 </div>
-                                <div class="flex items-center">
+                                <div class="flex items-center bg-blue-50 px-3 py-1 rounded-lg">
                                     <i class="fas fa-database text-blue-600 mr-2"></i>
                                     <span class="text-sm text-gray-700" id="cacheCount">0</span>
                                 </div>
@@ -87,14 +133,14 @@
                             <span>Proses Registrasi</span>
                             <span id="progressText">0/4 Langkah</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-3">
-                            <div id="progressBar" class="bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full progress-bar-animated" style="width: 0%"></div>
                         </div>
                     </div>
                     
                     <!-- Steps -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div id="step1" class="step-card bg-blue-50 border border-blue-200 p-4 rounded-xl text-center">
+                        <div id="step1" class="step-card bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm">
                             <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <i class="fas fa-user text-blue-600 text-xl"></i>
                             </div>
@@ -129,7 +175,7 @@
                 </div>
 
                 <!-- Step 1: Employee Selection -->
-                <div id="step1Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
+                <div id="step1Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-user mr-2 text-blue-600"></i> Pilih Karyawan
                     </h3>
@@ -140,7 +186,7 @@
                         </label>
                         <div class="relative">
                             <input type="text" id="searchEmployee" 
-                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                                    placeholder="Cari berdasarkan nama, kode, atau email..."
                                    onkeyup="searchEmployees()">
                             <div class="absolute right-3 top-3">
@@ -151,7 +197,6 @@
                     
                     <div class="max-h-96 overflow-y-auto scrollbar-thin pr-2">
                         <div id="employeeList" class="space-y-3">
-                            <!-- Employees will be loaded here -->
                             <div class="text-center py-8">
                                 <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
                                 <p class="text-gray-600">Memuat data karyawan...</p>
@@ -164,14 +209,14 @@
                             <span id="selectedEmployeeCount">0</span> karyawan terpilih
                         </div>
                         <button id="nextToStep2" onclick="goToStep2()" disabled
-                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                                class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             Lanjut ke Step 2 <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Step 2: Face Capture -->
-                <div id="step2Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                <div id="step2Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                             <i class="fas fa-camera mr-2 text-blue-600"></i> Ambil Gambar Wajah
@@ -181,9 +226,9 @@
                                 <i class="fas fa-video text-gray-400 mr-2"></i>
                                 <span class="text-sm text-gray-600">Kamera: Off</span>
                             </div>
-                            <div class="flex items-center">
+                            <div class="flex items-center bg-gray-100 px-3 py-1 rounded-lg">
                                 <span class="text-sm text-gray-600">Kualitas:</span>
-                                <span id="qualityScore" class="ml-2 px-2 py-1 bg-gray-100 rounded text-sm">-</span>
+                                <span id="qualityScore" class="ml-2 px-2 py-0.5 bg-white rounded text-sm font-medium">-</span>
                             </div>
                         </div>
                     </div>
@@ -198,23 +243,23 @@
                             <div class="face-overlay absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-80">
                                 <div class="absolute inset-0 border-2 border-white opacity-30 rounded-lg"></div>
                                 <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                                    <div class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                                        <i class="fas fa-user mr-1"></i> Posisikan Wajah Di Sini
+                                    <div class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                                        <i class="fas fa-user mr-1"></i> Posisikan Wajah
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Quality Indicators -->
                             <div id="qualityIndicators" class="absolute top-4 left-4 space-y-2 hidden">
-                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                <div class="flex items-center bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg backdrop-blur-sm">
                                     <i class="fas fa-sun mr-2 text-yellow-400"></i>
                                     <span class="text-sm">Pencahayaan: <span id="brightnessScore">-</span></span>
                                 </div>
-                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                <div class="flex items-center bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg backdrop-blur-sm">
                                     <i class="fas fa-eye mr-2 text-green-400"></i>
                                     <span class="text-sm">Ketajaman: <span id="sharpnessScore">-</span></span>
                                 </div>
-                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                <div class="flex items-center bg-black bg-opacity-60 text-white px-3 py-2 rounded-lg backdrop-blur-sm">
                                     <i class="fas fa-expand-alt mr-2 text-blue-400"></i>
                                     <span class="text-sm">Posisi: <span id="positionScore">-</span></span>
                                 </div>
@@ -232,22 +277,22 @@
                         <!-- Camera Controls -->
                         <div class="flex flex-wrap justify-center gap-4 mt-6">
                             <button id="startCameraBtn" onclick="startCamera()" 
-                                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                    class="px-6 py-3 btn-primary text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
                                 <i class="fas fa-video mr-2"></i> Hidupkan Kamera
                             </button>
                             
                             <button id="captureBtn" onclick="captureFace()" disabled
-                                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                    class="px-6 py-3 btn-success text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                                 <i class="fas fa-camera mr-2"></i> Ambil Gambar
                             </button>
                             
                             <button onclick="stopCamera()" 
-                                    class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
-                                <i class="fas fa-stop mr-2"></i> Matikan Kamera
+                                    class="px-6 py-3 btn-danger text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
+                                <i class="fas fa-stop mr-2"></i> Matikan
                             </button>
                             
                             <button onclick="switchCamera()" 
-                                    class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                    class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold flex items-center transition duration-300 shadow-md hover:shadow-lg">
                                 <i class="fas fa-sync-alt mr-2"></i> Ganti Kamera
                             </button>
                         </div>
@@ -257,7 +302,7 @@
                     <div class="mt-8">
                         <h4 class="font-medium text-gray-700 mb-4">Gambar yang Telah Diambil:</h4>
                         <div id="capturePreviews" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center py-8">
+                            <div class="text-center py-8 col-span-2 md:col-span-4">
                                 <i class="fas fa-images text-gray-300 text-3xl mb-3"></i>
                                 <p class="text-sm text-gray-500">Belum ada gambar</p>
                             </div>
@@ -266,18 +311,18 @@
                     
                     <div class="mt-6 flex justify-between">
                         <button onclick="goToStep1()" 
-                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Step 1
+                                class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali
                         </button>
                         <button id="nextToStep3" onclick="goToStep3()" disabled
-                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                                class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             Lanjut ke Validasi <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Step 3: Validation -->
-                <div id="step3Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                <div id="step3Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-check-circle mr-2 text-blue-600"></i> Validasi Gambar Wajah
                     </h3>
@@ -286,7 +331,6 @@
                         <p class="text-gray-600 mb-4">Validasi kualitas gambar untuk memastikan wajah dapat dikenali dengan baik:</p>
                         
                         <div id="validationResults" class="space-y-4">
-                            <!-- Validation results will appear here -->
                             <div class="text-center py-8">
                                 <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
                                 <p class="text-gray-600">Memuat hasil validasi...</p>
@@ -296,7 +340,7 @@
                     
                     <div class="mt-8">
                         <h4 class="font-medium text-gray-700 mb-4">Rekomendasi:</h4>
-                        <div class="bg-blue-50 p-4 rounded-lg">
+                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-200">
                             <ul class="space-y-2 text-sm text-gray-700">
                                 <li class="flex items-center">
                                     <i class="fas fa-check-circle text-green-500 mr-2"></i>
@@ -320,18 +364,18 @@
                     
                     <div class="mt-6 flex justify-between">
                         <button onclick="goToStep2()" 
-                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Step 2
+                                class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali
                         </button>
                         <button id="nextToStep4" onclick="goToStep4()" disabled
-                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                                class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
                             Lanjut ke Penyimpanan <i class="fas fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Step 4: Save to Database -->
-                <div id="step4Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                <div id="step4Content" class="glass-effect rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                         <i class="fas fa-database mr-2 text-blue-600"></i> Simpan ke Database
                     </h3>
@@ -344,7 +388,7 @@
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Siap Menyimpan Data</h4>
                             <p class="text-gray-600 mb-6">Data wajah akan disimpan ke database sistem</p>
                             
-                            <div class="max-w-md mx-auto bg-gray-50 p-6 rounded-lg">
+                            <div class="max-w-md mx-auto bg-gray-50 p-6 rounded-xl">
                                 <div class="space-y-4">
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-600">Karyawan:</span>
@@ -357,10 +401,6 @@
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-600">Status Validasi:</span>
                                         <span id="saveValidationStatus" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Valid</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-gray-600">Estimasi Waktu:</span>
-                                        <span class="font-semibold">2-3 detik</span>
                                     </div>
                                 </div>
                             </div>
@@ -376,8 +416,8 @@
                             <p class="text-gray-600 mb-6">Harap tunggu, data sedang diproses</p>
                             
                             <div class="max-w-md mx-auto">
-                                <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
-                                    <div id="saveProgressBar" class="bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                                <div class="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+                                    <div id="saveProgressBar" class="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full progress-bar-animated" style="width: 0%"></div>
                                 </div>
                                 <p class="text-sm text-gray-600" id="saveProgressText">Memulai proses...</p>
                             </div>
@@ -386,13 +426,13 @@
                     
                     <div id="saveSuccess" class="hidden">
                         <div class="text-center py-8">
-                            <div class="success-checkmark w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <i class="fas fa-check text-green-600 text-4xl"></i>
                             </div>
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Berhasil!</h4>
                             <p class="text-gray-600 mb-6" id="saveSuccessMessage">Data wajah berhasil disimpan</p>
                             
-                            <div class="max-w-md mx-auto bg-green-50 p-6 rounded-lg">
+                            <div class="max-w-md mx-auto bg-green-50 p-6 rounded-xl border border-green-200">
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-700">Karyawan:</span>
@@ -408,9 +448,20 @@
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-700">Status Cache:</span>
-                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Aktif</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Aktif</span>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <div class="mt-6">
+                                <button onclick="startNewRegistration()" 
+                                        class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg">
+                                    <i class="fas fa-plus mr-2"></i> Registrasi Baru
+                                </button>
+                                <a href="/dashboard" 
+                                   class="ml-3 px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                                    <i class="fas fa-home mr-2"></i> Dashboard
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -423,9 +474,9 @@
                             <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Gagal</h4>
                             <p class="text-gray-600 mb-6" id="saveErrorMessage">Terjadi kesalahan saat menyimpan data</p>
                             
-                            <div class="max-w-md mx-auto bg-red-50 p-6 rounded-lg">
+                            <div class="max-w-md mx-auto bg-red-50 p-6 rounded-xl border border-red-200">
                                 <p class="text-sm text-red-700 mb-4" id="errorDetails"></p>
-                                <button onclick="retrySave()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                                <button onclick="retrySave()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
                                     <i class="fas fa-redo mr-2"></i> Coba Lagi
                                 </button>
                             </div>
@@ -434,15 +485,12 @@
                     
                     <div class="mt-6 flex justify-between">
                         <button onclick="goToStep3()" id="backToStep3Btn"
-                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Validasi
+                                class="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali
                         </button>
                         <button id="saveBtn" onclick="saveToDatabase()"
-                                class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition duration-300">
+                                class="px-6 py-2.5 btn-success text-white rounded-xl font-medium transition duration-300 shadow-md hover:shadow-lg">
                             <i class="fas fa-save mr-2"></i> Simpan ke Database
-                        </button>
-                        <button id="newRegistrationBtn" onclick="startNewRegistration()" class="hidden px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
-                            <i class="fas fa-plus mr-2"></i> Registrasi Baru
                         </button>
                     </div>
                 </div>
@@ -451,14 +499,14 @@
             <!-- Right Column: Info & Preview -->
             <div class="space-y-6">
                 <!-- Selected Employee Info -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div class="glass-effect rounded-2xl shadow-lg p-6 border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-                        <i class="fas fa-info-circle mr-2 text-blue-600"></i> Informasi Karyawan Terpilih
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i> Informasi Karyawan
                     </h3>
                     
                     <div id="selectedEmployeeInfo" class="text-center py-8">
                         <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <i class="fas fa-user text-gray-400 text-2xl"></i>
+                            <i class="fas fa-user text-gray-400 text-3xl"></i>
                         </div>
                         <p class="text-gray-600">Pilih karyawan untuk melihat informasi</p>
                     </div>
@@ -466,7 +514,7 @@
                     <div id="employeeDetails" class="hidden">
                         <div class="space-y-4">
                             <div class="text-center mb-6">
-                                <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <div class="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i class="fas fa-user text-blue-600 text-3xl"></i>
                                 </div>
                                 <h4 class="text-lg font-bold text-gray-800" id="employeeName">-</h4>
@@ -474,15 +522,15 @@
                             </div>
                             
                             <div class="space-y-3">
-                                <div class="flex justify-between items-center pb-3 border-b">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-100">
                                     <span class="text-gray-600">Email</span>
                                     <span class="font-medium" id="employeeEmail">-</span>
                                 </div>
-                                <div class="flex justify-between items-center pb-3 border-b">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-100">
                                     <span class="text-gray-600">Shift</span>
                                     <span class="font-medium" id="employeeShift">-</span>
                                 </div>
-                                <div class="flex justify-between items-center pb-3 border-b">
+                                <div class="flex justify-between items-center pb-3 border-b border-gray-100">
                                     <span class="text-gray-600">Status</span>
                                     <span id="employeeStatus" class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Aktif</span>
                                 </div>
@@ -493,7 +541,7 @@
                             </div>
                         </div>
                         
-                        <div class="mt-8 pt-6 border-t">
+                        <div class="mt-8 pt-6 border-t border-gray-100">
                             <h4 class="font-medium text-gray-700 mb-3">Instruksi Registrasi:</h4>
                             <ul class="space-y-2 text-sm text-gray-600">
                                 <li class="flex items-center">
@@ -518,16 +566,16 @@
                 </div>
 
                 <!-- Face Quality Guide -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div class="glass-effect rounded-2xl shadow-lg p-6 border border-gray-100">
                     <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-                        <i class="fas fa-chart-line mr-2 text-blue-600"></i> Panduan Kualitas Wajah
+                        <i class="fas fa-chart-line mr-2 text-blue-600"></i> Panduan Kualitas
                     </h3>
                     
                     <div class="space-y-4">
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Pencahayaan</span>
-                                <span class="font-medium">Optimal</span>
+                                <span class="font-medium text-green-600">Optimal</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 <div class="bg-green-500 h-2 rounded-full" style="width: 90%"></div>
@@ -537,7 +585,7 @@
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Ketajaman</span>
-                                <span class="font-medium">Tajam</span>
+                                <span class="font-medium text-blue-600">Tajam</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
@@ -547,7 +595,7 @@
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Posisi Wajah</span>
-                                <span class="font-medium">Tengah</span>
+                                <span class="font-medium text-purple-600">Tengah</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 <div class="bg-purple-500 h-2 rounded-full" style="width: 95%"></div>
@@ -557,43 +605,22 @@
                         <div>
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-gray-600">Ukuran Wajah</span>
-                                <span class="font-medium">Optimal</span>
+                                <span class="font-medium text-yellow-600">Optimal</span>
                             </div>
                             <div class="w-full bg-gray-200 rounded-full h-2">
                                 <div class="bg-yellow-500 h-2 rounded-full" style="width: 88%"></div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="mt-6 pt-4 border-t">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="text-center">
-                                <div class="w-16 h-16 mx-auto mb-2">
-                                    <div class="w-full h-full bg-green-100 rounded-lg flex items-center justify-center">
-                                        <i class="fas fa-check text-green-600 text-xl"></i>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-600">Cahaya Cukup</p>
-                            </div>
-                            <div class="text-center">
-                                <div class="w-16 h-16 mx-auto mb-2">
-                                    <div class="w-full h-full bg-red-100 rounded-lg flex items-center justify-center">
-                                        <i class="fas fa-times text-red-600 text-xl"></i>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-gray-600">Cahaya Kurang</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- System Status -->
-                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white">
+                <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl shadow-lg p-6 text-white">
                     <h3 class="text-lg font-semibold mb-4 flex items-center">
                         <i class="fas fa-server mr-2"></i> Status Sistem
                     </h3>
                     
-                    <div class="space-y-4">
+                    <div class="space-y-3">
                         <div class="flex justify-between items-center">
                             <span>Cache Wajah</span>
                             <span class="font-bold" id="systemCacheCount">0</span>
@@ -604,11 +631,7 @@
                         </div>
                         <div class="flex justify-between items-center">
                             <span>Database</span>
-                            <span class="font-bold" id="systemDatabaseStatus">Online</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Waktu Proses</span>
-                            <span class="font-bold">1.2s</span>
+                            <span class="font-bold text-green-300">Online</span>
                         </div>
                     </div>
                     
@@ -626,18 +649,17 @@
                 </div>
 
                 <!-- Recent Registrations -->
-                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                <div class="glass-effect rounded-2xl shadow-lg p-6 border border-gray-100">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                             <i class="fas fa-history mr-2 text-blue-600"></i> Registrasi Terbaru
                         </h3>
-                        <button onclick="loadRecentRegistrations()" class="text-blue-600 hover:text-blue-800">
+                        <button onclick="loadRecentRegistrations()" class="text-blue-600 hover:text-blue-800 transition">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
                     
                     <div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin pr-2" id="recentRegistrations">
-                        <!-- Recent registrations will appear here -->
                         <div class="text-center py-4">
                             <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
                             <span class="text-gray-600">Memuat data...</span>
@@ -649,11 +671,11 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white border-t mt-12">
+    <footer class="glass-effect border-t border-gray-200 mt-12">
         <div class="container mx-auto px-4 py-6">
             <div class="flex flex-col md:flex-row justify-between items-center">
                 <div class="mb-4 md:mb-0">
-                    <p class="text-gray-600 text-sm">© 2024 Sistem Registrasi Wajah. Hak Cipta Dilindungi.</p>
+                    <p class="text-gray-600 text-sm">© 2026 Sistem Registrasi Wajah. Hak Cipta Dilindungi.</p>
                 </div>
                 <div class="flex items-center space-x-6">
                     <div class="flex items-center text-sm text-gray-600">
@@ -676,7 +698,6 @@
     <script>
         // Global variables
         let videoStream = null;
-        let currentStream = null;
         let facingMode = 'user';
         let selectedEmployee = null;
         let capturedImages = [];
@@ -695,12 +716,9 @@
             updateDateTime();
             setInterval(updateDateTime, 1000);
             
-            // Load employees and recent registrations
             loadEmployees();
             loadRecentRegistrations();
             loadCacheCount();
-            
-            // Set current step
             updateProgress();
         });
         
@@ -715,7 +733,7 @@
                 now.toLocaleDateString('id-ID', options);
         }
         
-        // Load employees
+        // Load employees from API
         async function loadEmployees() {
             try {
                 const response = await fetch('/api/karyawan');
@@ -727,19 +745,20 @@
                     
                     data.data.forEach(employee => {
                         const hasFace = employee.face_registered || false;
+                        const shiftName = employee.shift_nama || 'Belum diatur';
                         
                         html += `
-                            <div class="employee-card border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition"
+                            <div class="employee-card border border-gray-200 rounded-xl p-4 hover:bg-blue-50 cursor-pointer transition"
                                  onclick="selectEmployee(${employee.id})"
                                  data-id="${employee.id}"
                                  data-name="${employee.nama}"
                                  data-code="${employee.kode}"
-                                 data-email="${employee.email}"
-                                 data-shift="${employee.shift_nama || 'Belum diatur'}"
+                                 data-email="${employee.email || '-'}"
+                                 data-shift="${shiftName}"
                                  data-face="${hasFace}">
                                 <div class="flex items-center">
-                                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                                        <i class="fas fa-user text-blue-600"></i>
+                                    <div class="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mr-4">
+                                        <i class="fas fa-user text-blue-600 text-lg"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex justify-between items-start">
@@ -764,6 +783,11 @@
                     });
                     
                     container.innerHTML = html;
+                    
+                    // Re-apply search filter
+                    searchEmployees();
+                } else {
+                    showError('Gagal memuat data karyawan');
                 }
             } catch (error) {
                 console.error('Error loading employees:', error);
@@ -771,7 +795,7 @@
                     <div class="text-center py-8">
                         <i class="fas fa-exclamation-circle text-red-400 text-2xl mb-3"></i>
                         <p class="text-gray-600">Gagal memuat data karyawan</p>
-                        <button onclick="loadEmployees()" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+                        <button onclick="loadEmployees()" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition">
                             <i class="fas fa-redo mr-1"></i> Coba Lagi
                         </button>
                     </div>
@@ -790,28 +814,23 @@
                 const email = card.querySelector('.truncate').textContent.toLowerCase();
                 
                 if (name.includes(searchTerm) || code.includes(searchTerm) || email.includes(searchTerm)) {
-                    card.classList.remove('hidden');
+                    card.style.display = '';
                 } else {
-                    card.classList.add('hidden');
+                    card.style.display = 'none';
                 }
             });
         }
         
         // Select employee
         function selectEmployee(employeeId) {
-            // Remove previous selection
             document.querySelectorAll('.employee-card').forEach(card => {
-                card.classList.remove('border-blue-500', 'bg-blue-50');
-                card.classList.add('border-gray-200');
+                card.classList.remove('selected', 'border-blue-500', 'bg-blue-50');
             });
             
-            // Find selected card
             const selectedCard = document.querySelector(`.employee-card[data-id="${employeeId}"]`);
             if (selectedCard) {
-                selectedCard.classList.remove('border-gray-200');
-                selectedCard.classList.add('border-blue-500', 'bg-blue-50');
+                selectedCard.classList.add('selected', 'border-blue-500', 'bg-blue-50');
                 
-                // Get employee data
                 selectedEmployee = {
                     id: parseInt(employeeId),
                     name: selectedCard.dataset.name,
@@ -821,10 +840,7 @@
                     hasFace: selectedCard.dataset.face === 'true'
                 };
                 
-                // Update UI
                 updateSelectedEmployeeInfo();
-                
-                // Enable next button
                 document.getElementById('nextToStep2').disabled = false;
             }
         }
@@ -833,7 +849,6 @@
         function updateSelectedEmployeeInfo() {
             if (!selectedEmployee) return;
             
-            // Update info panel
             document.getElementById('selectedEmployeeInfo').classList.add('hidden');
             document.getElementById('employeeDetails').classList.remove('hidden');
             
@@ -842,65 +857,55 @@
             document.getElementById('employeeEmail').textContent = selectedEmployee.email || '-';
             document.getElementById('employeeShift').textContent = selectedEmployee.shift;
             
-            // Update face registered status
             const faceBadge = document.getElementById('faceRegistered');
             faceBadge.textContent = selectedEmployee.hasFace ? 'Sudah' : 'Belum';
             faceBadge.className = selectedEmployee.hasFace ? 
                 'px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full' : 
                 'px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full';
             
-            // Update step 4 save info
             document.getElementById('saveEmployeeName').textContent = selectedEmployee.name;
-            
-            // Update count
             document.getElementById('selectedEmployeeCount').textContent = '1';
         }
         
         // Update progress
         function updateProgress() {
-            // Update step indicators
             for (let i = 1; i <= 4; i++) {
                 const stepCard = document.getElementById(`step${i}`);
+                const icon = stepCard.querySelector('i');
+                const title = stepCard.querySelector('p.font-medium');
+                const subtitle = stepCard.querySelector('p.text-xs');
+                const iconContainer = stepCard.querySelector('.w-12');
+                
                 if (i < currentStep) {
-                    // Completed step
-                    stepCard.classList.remove('bg-gray-50', 'border-gray-200');
-                    stepCard.classList.add('bg-green-50', 'border-green-200');
-                    stepCard.querySelector('.w-12').classList.remove('bg-gray-100');
-                    stepCard.querySelector('.w-12').classList.add('bg-green-100');
-                    stepCard.querySelector('i').classList.remove('text-gray-400');
-                    stepCard.querySelector('i').classList.add('text-green-600');
-                    stepCard.querySelector('p.font-medium').classList.remove('text-gray-600');
-                    stepCard.querySelector('p.font-medium').classList.add('text-green-800');
-                    stepCard.querySelector('p.text-xs').classList.remove('text-gray-500');
-                    stepCard.querySelector('p.text-xs').classList.add('text-green-600');
+                    // Completed
+                    stepCard.className = 'step-card bg-green-50 border border-green-200 p-4 rounded-xl text-center shadow-sm';
+                    iconContainer.className = 'w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3';
+                    icon.className = 'fas fa-check text-green-600 text-xl';
+                    title.className = 'font-medium text-green-800';
+                    subtitle.className = 'text-xs text-green-600 mt-1';
                 } else if (i === currentStep) {
-                    // Current step
-                    stepCard.classList.remove('bg-gray-50', 'border-gray-200');
-                    stepCard.classList.add('bg-blue-50', 'border-blue-200');
-                    stepCard.querySelector('.w-12').classList.remove('bg-gray-100');
-                    stepCard.querySelector('.w-12').classList.add('bg-blue-100');
-                    stepCard.querySelector('i').classList.remove('text-gray-400');
-                    stepCard.querySelector('i').classList.add('text-blue-600');
-                    stepCard.querySelector('p.font-medium').classList.remove('text-gray-600');
-                    stepCard.querySelector('p.font-medium').classList.add('text-blue-800');
-                    stepCard.querySelector('p.text-xs').classList.remove('text-gray-500');
-                    stepCard.querySelector('p.text-xs').classList.add('text-blue-600');
+                    // Current
+                    stepCard.className = 'step-card bg-blue-50 border border-blue-200 p-4 rounded-xl text-center shadow-sm';
+                    iconContainer.className = 'w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3';
+                    icon.className = i === 1 ? 'fas fa-user text-blue-600 text-xl' :
+                                    i === 2 ? 'fas fa-camera text-blue-600 text-xl' :
+                                    i === 3 ? 'fas fa-check-circle text-blue-600 text-xl' :
+                                    'fas fa-database text-blue-600 text-xl';
+                    title.className = 'font-medium text-blue-800';
+                    subtitle.className = 'text-xs text-blue-600 mt-1';
                 } else {
-                    // Future step
-                    stepCard.classList.remove('bg-green-50', 'border-green-200', 'bg-blue-50', 'border-blue-200');
-                    stepCard.classList.add('bg-gray-50', 'border-gray-200');
-                    stepCard.querySelector('.w-12').classList.remove('bg-green-100', 'bg-blue-100');
-                    stepCard.querySelector('.w-12').classList.add('bg-gray-100');
-                    stepCard.querySelector('i').classList.remove('text-green-600', 'text-blue-600');
-                    stepCard.querySelector('i').classList.add('text-gray-400');
-                    stepCard.querySelector('p.font-medium').classList.remove('text-green-800', 'text-blue-800');
-                    stepCard.querySelector('p.font-medium').classList.add('text-gray-600');
-                    stepCard.querySelector('p.text-xs').classList.remove('text-green-600', 'text-blue-600');
-                    stepCard.querySelector('p.text-xs').classList.add('text-gray-500');
+                    // Future
+                    stepCard.className = 'step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center';
+                    iconContainer.className = 'w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3';
+                    icon.className = i === 1 ? 'fas fa-user text-gray-400 text-xl' :
+                                    i === 2 ? 'fas fa-camera text-gray-400 text-xl' :
+                                    i === 3 ? 'fas fa-check-circle text-gray-400 text-xl' :
+                                    'fas fa-database text-gray-400 text-xl';
+                    title.className = 'font-medium text-gray-600';
+                    subtitle.className = 'text-xs text-gray-500 mt-1';
                 }
             }
             
-            // Update progress bar
             const progressPercent = ((currentStep - 1) / 3) * 100;
             document.getElementById('progressBar').style.width = `${progressPercent}%`;
             document.getElementById('progressText').textContent = `${currentStep}/4 Langkah`;
@@ -916,14 +921,13 @@
             }
         }
         
-        // Go to step 2
+        // Navigation functions
         function goToStep2() {
             if (!selectedEmployee) {
                 alert('Pilih karyawan terlebih dahulu');
                 return;
             }
             
-            // Check if employee already has face registered
             if (selectedEmployee.hasFace) {
                 if (!confirm('Karyawan ini sudah memiliki wajah terdaftar. Apakah Anda ingin memperbarui data wajah?')) {
                     return;
@@ -932,16 +936,11 @@
             
             currentStep = 2;
             updateProgress();
-            
-            // Clear previous captures
             capturedImages = [];
             updateCapturePreviews();
-            
-            // Enable/disable buttons
             document.getElementById('nextToStep3').disabled = true;
         }
         
-        // Go to step 3
         function goToStep3() {
             if (capturedImages.length === 0) {
                 alert('Ambil minimal 1 gambar terlebih dahulu');
@@ -950,43 +949,23 @@
             
             currentStep = 3;
             updateProgress();
-            
-            // Run validation
             validateCaptures();
-            
-            // Enable/disable buttons
             document.getElementById('nextToStep4').disabled = false;
         }
         
-        // Go to step 4
         function goToStep4() {
             currentStep = 4;
             updateProgress();
-            
-            // Update save info
             document.getElementById('saveImageCount').textContent = capturedImages.length;
         }
         
-        // Go back to step 1
         function goToStep1() {
             currentStep = 1;
             updateProgress();
             stopCamera();
         }
         
-        // Go back to step 2
-        function goBackToStep2() {
-            currentStep = 2;
-            updateProgress();
-        }
-        
-        // Go back to step 3
-        function goBackToStep3() {
-            currentStep = 3;
-            updateProgress();
-        }
-        
-        // Start camera
+        // Camera functions
         async function startCamera() {
             try {
                 const constraints = {
@@ -1000,15 +979,12 @@
                 
                 videoStream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = videoStream;
-                currentStream = videoStream;
                 
-                // Update UI
                 startCameraBtn.disabled = true;
                 captureBtn.disabled = false;
                 document.getElementById('cameraStatus').innerHTML = 
                     '<i class="fas fa-video text-green-500 mr-2"></i><span class="text-sm text-green-600">Kamera: Aktif</span>';
                 
-                // Start quality monitoring
                 startQualityMonitoring();
                 
             } catch (error) {
@@ -1017,47 +993,35 @@
             }
         }
         
-        // Stop camera
         function stopCamera() {
             if (videoStream) {
                 videoStream.getTracks().forEach(track => track.stop());
                 video.srcObject = null;
                 videoStream = null;
-                currentStream = null;
                 
-                // Update UI
                 startCameraBtn.disabled = false;
                 captureBtn.disabled = true;
                 document.getElementById('cameraStatus').innerHTML = 
                     '<i class="fas fa-video text-gray-400 mr-2"></i><span class="text-sm text-gray-600">Kamera: Off</span>';
                 
-                // Hide quality indicators
                 qualityIndicators.classList.add('hidden');
             }
         }
         
-        // Switch camera
         async function switchCamera() {
             if (!videoStream) {
                 alert('Nyalakan kamera terlebih dahulu');
                 return;
             }
             
-            // Stop current stream
             videoStream.getTracks().forEach(track => track.stop());
-            
-            // Switch facing mode
             facingMode = facingMode === 'user' ? 'environment' : 'user';
-            
-            // Start new stream
             await startCamera();
         }
         
-        // Start quality monitoring
         function startQualityMonitoring() {
             qualityIndicators.classList.remove('hidden');
             
-            // Simulate quality monitoring
             setInterval(() => {
                 if (videoStream) {
                     const brightness = Math.floor(Math.random() * 30) + 70;
@@ -1071,13 +1035,12 @@
                     const avgQuality = Math.round((brightness + sharpness + position) / 3);
                     document.getElementById('qualityScore').textContent = `${avgQuality}%`;
                     
-                    // Update color based on quality
                     if (avgQuality >= 80) {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-sm';
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded text-sm font-medium';
                     } else if (avgQuality >= 60) {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm';
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded text-sm font-medium';
                     } else {
-                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-sm';
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-0.5 bg-red-100 text-red-800 rounded text-sm font-medium';
                     }
                 }
             }, 1000);
@@ -1090,69 +1053,63 @@
                 return;
             }
             
-            // Show capture indicator
             captureIndicator.classList.remove('hidden');
             
             setTimeout(() => {
                 try {
-                    // Capture frame from video
                     const context = canvas.getContext('2d');
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
                     context.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
-                    // Convert canvas to data URL
                     const imageData = canvas.toDataURL('image/jpeg', 0.9);
                     
-                    // Add to captured images
                     capturedImages.push({
                         id: Date.now(),
                         data: imageData,
-                        quality: Math.floor(Math.random() * 30) + 70, // Simulated quality score
+                        quality: Math.floor(Math.random() * 30) + 70,
                         timestamp: new Date().toLocaleTimeString('id-ID')
                     });
                     
-                    // Update previews
                     updateCapturePreviews();
-                    
-                    // Hide capture indicator
                     captureIndicator.classList.add('hidden');
                     
-                    // Enable next button if we have at least 3 images
                     if (capturedImages.length >= 3) {
                         document.getElementById('nextToStep3').disabled = false;
                     }
                     
-                    // Show success message
-                    showCaptureSuccess();
+                    showToast('success', `Gambar berhasil ditambahkan (${capturedImages.length}/3)`);
                     
                 } catch (error) {
                     console.error('Capture Error:', error);
                     captureIndicator.classList.add('hidden');
                     alert('Gagal mengambil gambar: ' + error.message);
                 }
-            }, 1500); // Simulate processing time
+            }, 1500);
         }
         
-        // Show capture success
-        function showCaptureSuccess() {
-            const successMsg = document.createElement('div');
-            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50';
-            successMsg.innerHTML = `
+        function showToast(type, message) {
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500'
+            };
+            toast.className = `fixed top-4 right-4 ${colors[type] || 'bg-gray-500'} text-white px-4 py-3 rounded-xl shadow-lg z-50 toast-notification`;
+            toast.innerHTML = `
                 <div class="flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>Gambar berhasil ditambahkan (${capturedImages.length}/3)</span>
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : 'info-circle'} mr-2"></i>
+                    <span>${message}</span>
                 </div>
             `;
             
-            document.body.appendChild(successMsg);
-            
+            document.body.appendChild(toast);
             setTimeout(() => {
-                successMsg.remove();
+                toast.style.animation = 'slideOutRight 0.5s ease-out';
+                setTimeout(() => toast.remove(), 500);
             }, 3000);
         }
         
-        // Update capture previews
         function updateCapturePreviews() {
             const container = document.getElementById('capturePreviews');
             
@@ -1169,7 +1126,7 @@
             let html = '';
             capturedImages.forEach((image, index) => {
                 html += `
-                    <div class="capture-preview relative border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="capture-preview relative border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                         <img src="${image.data}" class="w-full h-32 object-cover">
                         <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
                             <div class="flex justify-between items-center">
@@ -1178,17 +1135,16 @@
                             </div>
                         </div>
                         <button onclick="removeCapture(${image.id})" 
-                                class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">
+                                class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                 `;
             });
             
-            // Add placeholder for next capture if less than 4
             if (capturedImages.length < 4) {
                 html += `
-                    <div class="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center p-4 hover:border-blue-500 cursor-pointer"
+                    <div class="border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center p-4 hover:border-blue-500 cursor-pointer transition"
                          onclick="captureFace()">
                         <i class="fas fa-plus text-gray-400 text-2xl mb-2"></i>
                         <p class="text-sm text-gray-500">Tambah Gambar</p>
@@ -1199,12 +1155,10 @@
             container.innerHTML = html;
         }
         
-        // Remove capture
         function removeCapture(imageId) {
             capturedImages = capturedImages.filter(img => img.id !== imageId);
             updateCapturePreviews();
             
-            // Disable next button if less than 3 images
             if (capturedImages.length < 3) {
                 document.getElementById('nextToStep3').disabled = true;
             }
@@ -1214,7 +1168,6 @@
         function validateCaptures() {
             const container = document.getElementById('validationResults');
             
-            // Simulate validation process
             setTimeout(() => {
                 let html = '';
                 let allValid = true;
@@ -1224,7 +1177,7 @@
                     if (!isValid) allValid = false;
                     
                     html += `
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                             <div class="flex items-center">
                                 <div class="w-10 h-10 ${isValid ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center mr-3">
                                     <i class="fas fa-${isValid ? 'check' : 'times'} text-${isValid ? 'green' : 'red'}-600"></i>
@@ -1243,9 +1196,8 @@
                     `;
                 });
                 
-                // Add summary
                 html += `
-                    <div class="mt-6 p-4 ${allValid ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'} rounded-lg">
+                    <div class="mt-6 p-4 ${allValid ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'} rounded-xl">
                         <div class="flex items-center">
                             <i class="fas fa-${allValid ? 'check-circle' : 'exclamation-triangle'} ${allValid ? 'text-green-600' : 'text-yellow-600'} mr-3 text-xl"></i>
                             <div>
@@ -1264,7 +1216,6 @@
                 
                 container.innerHTML = html;
                 
-                // Update validation status for step 4
                 const statusEl = document.getElementById('saveValidationStatus');
                 statusEl.textContent = allValid ? 'Valid' : 'Perlu Perbaikan';
                 statusEl.className = allValid ? 
@@ -1281,11 +1232,9 @@
                 return;
             }
             
-            // Show progress
             document.getElementById('saveContent').classList.add('hidden');
             document.getElementById('saveProgress').classList.remove('hidden');
             
-            // Simulate progress updates
             let progress = 0;
             const progressInterval = setInterval(() => {
                 progress += 10;
@@ -1301,7 +1250,6 @@
             }, 200);
         }
         
-        // Get progress text
         function getProgressText(progress) {
             if (progress < 30) return 'Mempersiapkan data...';
             if (progress < 60) return 'Memproses gambar wajah...';
@@ -1309,32 +1257,44 @@
             return 'Menyelesaikan proses...';
         }
         
-        // Complete registration
         async function completeRegistration() {
             try {
-                // Simulate API call
-                setTimeout(() => {
-                    // Show success
+                // Prepare image data (send as base64)
+                const imageData = capturedImages.map(img => img.data);
+                
+                // Send to server using the existing face/register endpoint
+                const response = await fetch(`/face/register/${selectedEmployee.id}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        images: imageData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.message) {
+                    // Success
                     document.getElementById('saveProgress').classList.add('hidden');
                     document.getElementById('saveSuccess').classList.remove('hidden');
                     
-                    // Update success info
                     document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
                     document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
                     document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
                     document.getElementById('saveSuccessMessage').textContent = 
                         `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${capturedImages.length} gambar.`;
                     
-                    // Update buttons
-                    document.getElementById('saveBtn').classList.add('hidden');
-                    document.getElementById('backToStep3Btn').classList.add('hidden');
-                    document.getElementById('newRegistrationBtn').classList.remove('hidden');
+                    document.getElementById('saveBtn').style.display = 'none';
+                    document.getElementById('backToStep3Btn').style.display = 'none';
                     
-                    // Update cache count
                     loadCacheCount();
                     loadRecentRegistrations();
-                    
-                }, 1000);
+                    showToast('success', 'Registrasi wajah berhasil!');
+                } else {
+                    showSaveError(result.error || 'Gagal menyimpan data');
+                }
                 
             } catch (error) {
                 console.error('Registration Error:', error);
@@ -1342,7 +1302,6 @@
             }
         }
         
-        // Show save error
         function showSaveError(message) {
             document.getElementById('saveProgress').classList.add('hidden');
             document.getElementById('saveError').classList.remove('hidden');
@@ -1350,44 +1309,41 @@
             document.getElementById('errorDetails').textContent = 'Silakan coba lagi atau hubungi administrator.';
         }
         
-        // Retry save
         function retrySave() {
             document.getElementById('saveError').classList.add('hidden');
             document.getElementById('saveContent').classList.remove('hidden');
         }
         
-        // Start new registration
         function startNewRegistration() {
-            // Reset everything
             selectedEmployee = null;
             capturedImages = [];
             currentStep = 1;
             
-            // Update UI
             updateProgress();
             updateCapturePreviews();
             document.getElementById('selectedEmployeeInfo').classList.remove('hidden');
             document.getElementById('employeeDetails').classList.add('hidden');
             document.getElementById('saveSuccess').classList.add('hidden');
             document.getElementById('saveContent').classList.remove('hidden');
-            document.getElementById('saveBtn').classList.remove('hidden');
-            document.getElementById('backToStep3Btn').classList.remove('hidden');
-            document.getElementById('newRegistrationBtn').classList.add('hidden');
+            document.getElementById('saveBtn').style.display = '';
+            document.getElementById('backToStep3Btn').style.display = '';
+            document.getElementById('saveError').classList.add('hidden');
             
-            // Stop camera
             stopCamera();
-            
-            // Reload employees
             loadEmployees();
         }
         
         // Load cache count
         async function loadCacheCount() {
             try {
-                // Simulate API call
-                const count = Math.floor(Math.random() * 50) + 20;
-                document.getElementById('cacheCount').textContent = count;
-                document.getElementById('systemCacheCount').textContent = count;
+                const response = await fetch('/api/face-cache-stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const count = data.stats.total_cached_faces || 0;
+                    document.getElementById('cacheCount').textContent = count;
+                    document.getElementById('systemCacheCount').textContent = count;
+                }
             } catch (error) {
                 console.error('Error loading cache count:', error);
             }
@@ -1396,54 +1352,70 @@
         // Load recent registrations
         async function loadRecentRegistrations() {
             try {
-                // Simulate API call
-                const registrations = [
-                    { name: 'Budi Santoso', time: '10:30', images: 3 },
-                    { name: 'Siti Rahayu', time: '09:45', images: 4 },
-                    { name: 'Ahmad Fauzi', time: '08:15', images: 3 },
-                    { name: 'Dewi Anggraini', time: 'Yesterday', images: 4 }
-                ];
+                const response = await fetch('/api/registrations');
+                const data = await response.json();
                 
                 const container = document.getElementById('recentRegistrations');
-                let html = '';
                 
-                registrations.forEach(reg => {
-                    html += `
-                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
-                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
-                                <i class="fas fa-user text-blue-600"></i>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="font-medium text-gray-800 truncate">${reg.name}</p>
-                                <div class="flex items-center text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-clock mr-1"></i>
-                                    <span>${reg.time}</span>
-                                    <i class="fas fa-image ml-3 mr-1"></i>
-                                    <span>${reg.images} gambar</span>
+                if (data.success && data.data.length > 0) {
+                    let html = '';
+                    data.data.slice(0, 5).forEach(reg => {
+                        const date = new Date(reg.timestamp);
+                        const timeStr = date.toLocaleString('id-ID', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        });
+                        
+                        html += `
+                            <div class="flex items-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-user text-blue-600"></i>
                                 </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-medium text-gray-800 truncate">${reg.employee_name}</p>
+                                    <div class="flex items-center text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-clock mr-1"></i>
+                                        <span>${timeStr}</span>
+                                        <i class="fas fa-image ml-3 mr-1"></i>
+                                        <span>${reg.images_count || 3} gambar</span>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Sukses</span>
                             </div>
+                        `;
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox text-gray-300 text-2xl mb-2"></i>
+                            <p class="text-gray-600">Belum ada registrasi</p>
                         </div>
                     `;
-                });
-                
-                container.innerHTML = html;
-                
+                }
             } catch (error) {
                 console.error('Error loading recent registrations:', error);
+                document.getElementById('recentRegistrations').innerHTML = `
+                    <div class="text-center py-4 text-gray-600">
+                        <i class="fas fa-exclamation-circle mr-2"></i>
+                        Gagal memuat data
+                    </div>
+                `;
             }
         }
         
-        // Handle page visibility change
+        // Handle page visibility
         document.addEventListener('visibilitychange', function() {
             if (document.hidden && videoStream) {
-                // Page is hidden, stop camera to save resources
                 stopCamera();
             }
         });
         
         // Handle window resize
         window.addEventListener('resize', function() {
-            // Update UI if needed
+            // Adjust UI if needed
         });
     </script>
 </body>
