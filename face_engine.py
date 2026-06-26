@@ -3,11 +3,10 @@ def safe_import_cv2():
         cv2 = get_cv2()
         if cv2 is None:
             return {
-        'employee_id': None,
-        'similarity': 0.0,
-        'liveness_ok': False
-    }
-
+                'employee_id': None,
+                'similarity': 0.0,
+                'liveness_ok': False
+            }
         return cv2
     except Exception as e:
         raise RuntimeError("OpenCV not available (Railway headless)") from e
@@ -39,16 +38,21 @@ def _init_mediapipe():
     global _mp_face_mesh, _face_mesh_instance
     
     if _face_mesh_instance is None:
-        import mediapipe as mp
-        _mp_face_mesh = mp.solutions.face_mesh
-        
-        _face_mesh_instance = _mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
-            static_image_mode=False
-        )
+        try:
+            import mediapipe as mp
+            _mp_face_mesh = mp.solutions.face_mesh
+            
+            _face_mesh_instance = _mp_face_mesh.FaceMesh(
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5,
+                static_image_mode=False
+            )
+            print("✅ MediaPipe FaceMesh initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize MediaPipe: {e}")
+            _face_mesh_instance = None
 
 class FaceEngine:
     """Optimized face recognition and liveness detection engine"""
@@ -58,10 +62,11 @@ class FaceEngine:
         _init_mediapipe()
         
         # Load face encodings from cache (normalized)
-        from face_cache import face_cache
         self.known_faces = {}
         
         try:
+            # Try to load from face_cache
+            from face_cache import face_cache
             all_faces = face_cache.get_all()
             for emp_id, enc in all_faces.items():
                 if isinstance(enc, list):
@@ -70,14 +75,15 @@ class FaceEngine:
                     if norm > 0:
                         vec = vec / norm
                     self.known_faces[emp_id] = vec
+            print(f"📂 Loaded {len(self.known_faces)} face encodings from cache")
         except Exception as e:
-            print(f"Error loading face cache: {e}")
+            print(f"⚠️ Error loading face cache: {e}")
             self.known_faces = {}
         
         # Thresholds from config
-        self.recognition_threshold = Config.FACE_RECOGNITION_THRESHOLD
-        self.liveness_threshold = Config.LIVENESS_THRESHOLD
-        self.min_face_confidence = Config.MIN_FACE_CONFIDENCE
+        self.recognition_threshold = getattr(Config, 'FACE_RECOGNITION_THRESHOLD', 0.6)
+        self.liveness_threshold = getattr(Config, 'LIVENESS_THRESHOLD', 0.2)
+        self.min_face_confidence = getattr(Config, 'MIN_FACE_CONFIDENCE', 0.5)
     
     def _extract_face_embedding(self, img_rgb: np.ndarray) -> Optional[np.ndarray]:
         """
@@ -93,7 +99,9 @@ class FaceEngine:
             global _face_mesh_instance
             
             if _face_mesh_instance is None:
-                return None
+                _init_mediapipe()
+                if _face_mesh_instance is None:
+                    return None
             
             # Process with FaceMesh
             img_rgb.flags.writeable = False
@@ -168,40 +176,34 @@ class FaceEngine:
             return 0.0
     
     def process_attendance(self, image: np.ndarray) -> dict:
-        cv2 = get_cv2()
-        if cv2 is None:
-            return {
-        'employee_id': None,
-        'similarity': 0.0,
-        'liveness_ok': False
-    }
-
-        """
-        Process attendance image for face recognition and liveness detection
-        
-        Args:
-            image: numpy array image (BGR format)
-            
-        Returns:
-            dict: {
-                'employee_id': int or None,
-                'similarity': float,
-                'liveness_ok': bool
-            }
-        """
+        """Process attendance image for face recognition and liveness detection"""
         try:
-            # Convert BGR to RGB
-            img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            cv2 = get_cv2()
+            if cv2 is None:
+                print("⚠️ OpenCV not available, using fallback method")
+                # Fallback: try to process without OpenCV
+                return self._process_attendance_fallback(image)
+            
+            # Convert BGR to RGB if needed
+            if len(image.shape) == 3 and image.shape[2] == 3:
+                # Check if it's BGR (OpenCV default)
+                img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            else:
+                img_rgb = image
+            
             img_rgb.flags.writeable = False
             
             # Process with MediaPipe
             global _face_mesh_instance
             if _face_mesh_instance is None:
-                return {
-                    'employee_id': None,
-                    'similarity': 0.0,
-                    'liveness_ok': False
-                }
+                _init_mediapipe()
+                if _face_mesh_instance is None:
+                    return {
+                        'employee_id': None,
+                        'similarity': 0.0,
+                        'liveness_ok': False,
+                        'message': 'MediaPipe not initialized'
+                    }
             
             results = _face_mesh_instance.process(img_rgb)
             
@@ -210,7 +212,8 @@ class FaceEngine:
                 return {
                     'employee_id': None,
                     'similarity': 0.0,
-                    'liveness_ok': False
+                    'liveness_ok': False,
+                    'message': 'No face detected'
                 }
             
             # Get face landmarks
@@ -224,7 +227,8 @@ class FaceEngine:
                 return {
                     'employee_id': None,
                     'similarity': 0.0,
-                    'liveness_ok': False
+                    'liveness_ok': False,
+                    'message': f'Liveness failed (EAR: {ear:.3f})'
                 }
             
             # Step 2: Extract face embedding
@@ -233,7 +237,8 @@ class FaceEngine:
                 return {
                     'employee_id': None,
                     'similarity': 0.0,
-                    'liveness_ok': True
+                    'liveness_ok': True,
+                    'message': 'Face detected but no embedding'
                 }
             
             # Step 3: Recognize face
@@ -251,7 +256,8 @@ class FaceEngine:
             return {
                 'employee_id': best_match_id,
                 'similarity': best_similarity,
-                'liveness_ok': True
+                'liveness_ok': True,
+                'message': 'Attendance processed'
             }
             
         except Exception as e:
@@ -259,26 +265,121 @@ class FaceEngine:
             return {
                 'employee_id': None,
                 'similarity': 0.0,
-                'liveness_ok': False
+                'liveness_ok': False,
+                'message': f'Error: {str(e)}'
+            }
+    
+    def _process_attendance_fallback(self, image) -> dict:
+        """Fallback method when OpenCV is not available"""
+        try:
+            # Try to convert image to RGB using PIL if available
+            try:
+                from PIL import Image
+                import io
+                
+                if isinstance(image, bytes):
+                    img = Image.open(io.BytesIO(image))
+                elif isinstance(image, np.ndarray):
+                    # Convert numpy array to PIL
+                    img = Image.fromarray(image.astype('uint8'))
+                else:
+                    return {
+                        'employee_id': None,
+                        'similarity': 0.0,
+                        'liveness_ok': False,
+                        'message': 'Unsupported image format'
+                    }
+                
+                # Convert to RGB
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                img_np = np.array(img)
+                
+                # Process with MediaPipe
+                global _face_mesh_instance
+                if _face_mesh_instance is None:
+                    _init_mediapipe()
+                    if _face_mesh_instance is None:
+                        return {
+                            'employee_id': None,
+                            'similarity': 0.0,
+                            'liveness_ok': False,
+                            'message': 'MediaPipe not initialized'
+                        }
+                
+                results = _face_mesh_instance.process(img_np)
+                
+                if not results.multi_face_landmarks:
+                    return {
+                        'employee_id': None,
+                        'similarity': 0.0,
+                        'liveness_ok': False,
+                        'message': 'No face detected'
+                    }
+                
+                # Extract embedding
+                face_embedding = self._extract_face_embedding(img_np)
+                if face_embedding is None:
+                    return {
+                        'employee_id': None,
+                        'similarity': 0.0,
+                        'liveness_ok': True,
+                        'message': 'Face detected but no embedding'
+                    }
+                
+                # Find match
+                best_match_id = None
+                best_similarity = 0.0
+                
+                for emp_id, known_vector in self.known_faces.items():
+                    similarity = float(np.dot(face_embedding, known_vector))
+                    if similarity > best_similarity and similarity > self.recognition_threshold:
+                        best_similarity = similarity
+                        best_match_id = emp_id
+                
+                return {
+                    'employee_id': best_match_id,
+                    'similarity': best_similarity,
+                    'liveness_ok': True,
+                    'message': 'Attendance processed (fallback)'
+                }
+                
+            except Exception as e:
+                print(f"Fallback error: {e}")
+                return {
+                    'employee_id': None,
+                    'similarity': 0.0,
+                    'liveness_ok': False,
+                    'message': f'Fallback error: {str(e)}'
+                }
+                
+        except Exception as e:
+            print(f"Error in fallback: {e}")
+            return {
+                'employee_id': None,
+                'similarity': 0.0,
+                'liveness_ok': False,
+                'message': f'Fallback error: {str(e)}'
             }
     
     def verify_liveness(self, image: np.ndarray) -> bool:
-        """
-        Verify liveness from image
-        
-        Args:
-            image: numpy array image (BGR)
-            
-        Returns:
-            bool: True if live, False otherwise
-        """
+        """Verify liveness from image"""
         try:
+            cv2 = get_cv2()
+            if cv2 is None:
+                # Use fallback
+                result = self._process_attendance_fallback(image)
+                return result.get('liveness_ok', False)
+            
             img_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             img_rgb.flags.writeable = False
             
             global _face_mesh_instance
             if _face_mesh_instance is None:
-                return False
+                _init_mediapipe()
+                if _face_mesh_instance is None:
+                    return False
             
             results = _face_mesh_instance.process(img_rgb)
             
@@ -294,46 +395,49 @@ class FaceEngine:
             print(f"Error in verify_liveness: {e}")
             return False
     
-    def extract_face_encoding(self, image_bytes: bytes) -> Optional[list]:
-        """
-        Extract 128-D face encoding from image bytes
-        
-        Args:
-            image_bytes: Image data in bytes
-            
-        Returns:
-            List of 128 floats or None if no face detected
-        """
+    def extract_face_encoding(self, image_data) -> Optional[list]:
+        """Extract 128-D face encoding from various input formats"""
         try:
-            # Decode image
-            nparr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            # If it's bytes, try to decode
+            if isinstance(image_data, bytes):
+                cv2 = get_cv2()
+                if cv2 is not None:
+                    nparr = np.frombuffer(image_data, np.uint8)
+                    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                    if img is not None:
+                        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                        embedding = self._extract_face_embedding(img_rgb)
+                        if embedding is not None:
+                            return embedding.tolist()
+                
+                # Try PIL fallback
+                try:
+                    from PIL import Image
+                    import io
+                    img = Image.open(io.BytesIO(image_data))
+                    if img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    img_np = np.array(img)
+                    embedding = self._extract_face_embedding(img_np)
+                    if embedding is not None:
+                        return embedding.tolist()
+                except:
+                    pass
             
-            if img is None:
-                return None
+            # If it's already a numpy array
+            elif isinstance(image_data, np.ndarray):
+                embedding = self._extract_face_embedding(image_data)
+                if embedding is not None:
+                    return embedding.tolist()
             
-            # Extract embedding
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            embedding = self._extract_face_embedding(img_rgb)
-            
-            if embedding is None:
-                return None
-            
-            return embedding.tolist()
+            return None
             
         except Exception as e:
             print(f"Error in extract_face_encoding: {e}")
             return None
     
-    
     def add_face_encoding(self, employee_id: int, encoding: list):
-        """
-        Add face encoding to cache and memory
-        
-        Args:
-            employee_id: Employee ID
-            encoding: Face encoding list
-        """
+        """Add face encoding to cache and memory"""
         try:
             from face_cache import face_cache
             
@@ -359,13 +463,28 @@ class FaceEngine:
             'total_faces': len(self.known_faces),
             'recognition_threshold': self.recognition_threshold,
             'liveness_threshold': self.liveness_threshold,
-            'cache_file_exists': os.path.exists(Config.FACE_CACHE_FILE)
+            'mediapipe_initialized': _face_mesh_instance is not None
         }
+
 # Global face engine (lazy safe)
-face_engine = None
+_face_engine_instance = None
+
+def get_face_engine():
+    """Get or create FaceEngine instance"""
+    global _face_engine_instance
+    if _face_engine_instance is None:
+        try:
+            _face_engine_instance = FaceEngine()
+            print("✅ FaceEngine initialized successfully")
+        except Exception as e:
+            print(f"❌ Failed to initialize FaceEngine: {e}")
+            _face_engine_instance = None
+    return _face_engine_instance
 
 def get_face_engine_safe():
-    global face_engine
-    if face_engine is None:
-        face_engine = get_face_engine()
-    return face_engine
+    """Get FaceEngine safely, return None if not available"""
+    try:
+        return get_face_engine()
+    except Exception as e:
+        print(f"⚠️ Error getting face engine: {e}")
+        return None

@@ -348,8 +348,11 @@ def register_face(employee_id):
 # ===============================
 @app.route("/face/register-json/<int:employee_id>", methods=["POST"])
 def register_face_json(employee_id):
-    """Register face using JSON with base64 images (for webcam capture)"""
+    """Register face using JSON with base64 images"""
     try:
+        import base64
+        import numpy as np
+        
         data = request.json
         images = data.get('images', [])
         
@@ -363,72 +366,64 @@ def register_face_json(employee_id):
         if not employee:
             return jsonify({"error": "Karyawan tidak ditemukan"}), 404
         
-        # Process images for face detection
-        import base64
-        import cv2
-        import numpy as np
+        # Get face engine
+        from face_engine import get_face_engine
+        engine = get_face_engine()
         
-        valid_images = []
-        for img_data in images:
+        if engine is None:
+            return jsonify({"error": "Face engine not available"}), 500
+        
+        valid_encodings = []
+        
+        for idx, img_data in enumerate(images):
             try:
                 if img_data.startswith('data:image'):
                     img_data = img_data.split(',')[1]
                 
                 img_bytes = base64.b64decode(img_data)
-                nparr = np.frombuffer(img_bytes, np.uint8)
-                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 
-                if img is not None:
-                    valid_images.append(img)
+                # Try to extract encoding
+                encoding = engine.extract_face_encoding(img_bytes)
+                
+                if encoding is not None:
+                    valid_encodings.append(encoding)
+                    print(f"✅ Image {idx+1}: Face encoded")
+                else:
+                    print(f"⚠️ Image {idx+1}: No face detected")
+                    
             except Exception as e:
-                print(f"Error processing image: {e}")
+                print(f"❌ Error processing image {idx+1}: {e}")
                 continue
         
-        if len(valid_images) < 3:
+        if len(valid_encodings) < 3:
             return jsonify({
-                "error": f"Hanya {len(valid_images)} gambar valid. Minimal 3 gambar diperlukan."
+                "error": f"Hanya {len(valid_encodings)} wajah valid. Minimal 3 diperlukan."
             }), 400
         
-        # Use face engine for encoding
-        from face_engine import get_face_engine
-        engine = get_face_engine()
-        
-        # Try to extract face encoding from each image
-        best_encoding = None
-        for img in valid_images:
-            success, img_encoded = cv2.imencode('.jpg', img)
-            if not success:
-                continue
-            
-            encoding = engine.extract_face_encoding(img_encoded.tobytes())
-            if encoding is not None:
-                best_encoding = encoding
-                break
-        
-        if best_encoding is None:
-            return jsonify({"error": "Tidak dapat mendeteksi wajah pada gambar"}), 422
+        # Use average encoding
+        avg_encoding = np.mean(valid_encodings, axis=0).tolist()
         
         # Save to database
         FaceEncoding.query.filter_by(employee_id=employee_id).delete()
         
         face_encoding = FaceEncoding(
             employee_id=employee_id,
-            encoding=best_encoding
+            encoding=avg_encoding
         )
         db.session.add(face_encoding)
         db.session.commit()
         
         # Add to engine cache
-        engine.add_face_encoding(employee_id, best_encoding)
+        engine.add_face_encoding(employee_id, avg_encoding)
         
         return jsonify({
-            "message": "Wajah berhasil diregistrasi",
+            "message": f"Wajah berhasil diregistrasi dengan {len(valid_encodings)} gambar",
             "employee_id": employee_id,
-            "images_processed": len(valid_images)
+            "images_processed": len(valid_encodings)
         }), 200
         
     except Exception as e:
-        print(f"Error in register_face_json: {e}")
+        print(f"❌ Error in register_face_json: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
