@@ -442,18 +442,16 @@ def izin_page():
     return render_template("izin.html")
 
 
-@app.route("/register")
-def register_page():
-    return render_template("register.html")
+@app.route("/register-face-general")
+def register_face_general():
+    return render_template("register_face_general.html")
 
 
 @app.route("/register-face")
-def register_face_page():
-
+def register_face():
     employee_id = request.args.get("employee_id")
-
     return render_template(
-        "register_face_general.html",
+        "register.html",
         employee_id=employee_id
     )
 
