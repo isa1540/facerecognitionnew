@@ -745,67 +745,49 @@ if __name__ == "__main__":
 # SEED DATA (Auto-run jika kosong)
 # ===============================
 def seed_employees():
-    """Seed initial employee data if table is empty"""
+    """Seed initial employee and shift data if table is empty"""
+    
+    # Seed shifts first
+    if ShiftSetting.query.count() == 0:
+        print("📦 Seeding shift data...")
+        shifts = [
+            ShiftSetting(
+                nama="PAGI",
+                jam_masuk=time(8, 0, 0),
+                jam_pulang=time(16, 0, 0),
+                toleransi_menit=15,
+                aktif=True
+            ),
+            ShiftSetting(
+                nama="SIANG",
+                jam_masuk=time(13, 0, 0),
+                jam_pulang=time(21, 0, 0),
+                toleransi_menit=15,
+                aktif=True
+            )
+        ]
+        for shift in shifts:
+            db.session.add(shift)
+        db.session.commit()
+        print(f"✅ {len(shifts)} shifts seeded!")
+    
+    # Then seed employees
     if Employee.query.count() == 0:
         print("📦 Seeding initial employee data...")
         
+        # Get shift IDs
+        shift_pagi = ShiftSetting.query.filter_by(nama="PAGI").first()
+        shift_siang = ShiftSetting.query.filter_by(nama="SIANG").first()
+        
         employees = [
-            Employee(
-                kode="EMP001",
-                nama="Budi Santoso",
-                email="budi.santoso@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP002",
-                nama="Siti Rahayu",
-                email="siti.rahayu@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP003",
-                nama="Ahmad Fauzi",
-                email="ahmad.fauzi@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP004",
-                nama="Dewi Anggraini",
-                email="dewi.anggraini@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP005",
-                nama="Rudi Hermawan",
-                email="rudi.hermawan@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP006",
-                nama="Maya Sari",
-                email="maya.sari@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP007",
-                nama="Andi Wijaya",
-                email="andi.wijaya@company.com",
-                shift_id=None,
-                aktif=True
-            ),
-            Employee(
-                kode="EMP008",
-                nama="Nina Kurniawati",
-                email="nina.kurniawati@company.com",
-                shift_id=None,
-                aktif=True
-            )
+            Employee(kode="EMP001", nama="Budi Santoso", email="budi.santoso@company.com", shift_id=shift_pagi.id if shift_pagi else None, aktif=True),
+            Employee(kode="EMP002", nama="Siti Rahayu", email="siti.rahayu@company.com", shift_id=shift_pagi.id if shift_pagi else None, aktif=True),
+            Employee(kode="EMP003", nama="Ahmad Fauzi", email="ahmad.fauzi@company.com", shift_id=shift_siang.id if shift_siang else None, aktif=True),
+            Employee(kode="EMP004", nama="Dewi Anggraini", email="dewi.anggraini@company.com", shift_id=shift_pagi.id if shift_pagi else None, aktif=True),
+            Employee(kode="EMP005", nama="Rudi Hermawan", email="rudi.hermawan@company.com", shift_id=shift_siang.id if shift_siang else None, aktif=True),
+            Employee(kode="EMP006", nama="Maya Sari", email="maya.sari@company.com", shift_id=shift_pagi.id if shift_pagi else None, aktif=True),
+            Employee(kode="EMP007", nama="Andi Wijaya", email="andi.wijaya@company.com", shift_id=shift_siang.id if shift_siang else None, aktif=True),
+            Employee(kode="EMP008", nama="Nina Kurniawati", email="nina.kurniawati@company.com", shift_id=shift_pagi.id if shift_pagi else None, aktif=True)
         ]
         
         for emp in employees:
@@ -815,7 +797,7 @@ def seed_employees():
         print(f"✅ {len(employees)} employees seeded successfully!")
     else:
         print(f"✅ Employees already exist: {Employee.query.count()} records")
-
+        
 # Panggil fungsi setelah db.init_app
 with app.app_context():
     db.create_all()
