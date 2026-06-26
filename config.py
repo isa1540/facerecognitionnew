@@ -33,17 +33,22 @@ class Config:
         ])
 
     @classmethod
-    def build_database_uri(cls) -> str:
-        if cls.is_mysql_ready():
-            return (
-                f"mysql+mysqlconnector://"
-                f"{cls.MYSQL_USER}:{cls.MYSQL_PASSWORD}"
-                f"@{cls.MYSQL_HOST}:{cls.MYSQL_PORT}"
-                f"/{cls.MYSQL_DB}"
-            )
+    def build_database_uri(cls):
+    # Railway
+        database_url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("MYSQL_PUBLIC_URL")
+    )
 
-        # ✅ SQLITE FALLBACK (WAJIB)
-        return "sqlite:///attendance.db"
+    if database_url:
+        return database_url.replace(
+            "mysql://",
+            "mysql+mysqlconnector://",
+            1
+        )
+
+    # Fallback ke SQLite jika tidak ada database Railway
+    return "sqlite:///attendance.db"
 
     @staticmethod
     def init_app(app):
