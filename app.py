@@ -353,11 +353,16 @@ def register_face_json(employee_id):
         import base64
         import numpy as np
         
-        data = request.json
-        
-        # DEBUG: Log request
+        # Log request
         print(f"📥 Received request for employee {employee_id}")
-        print(f"📦 Data keys: {data.keys() if data else 'None'}")
+        print(f"📦 Content-Type: {request.headers.get('Content-Type')}")
+        
+        # Check if request has JSON
+        if not request.is_json:
+            print("❌ Request is not JSON")
+            return jsonify({"error": "Request must be JSON"}), 400
+        
+        data = request.get_json(silent=True)
         
         if not data:
             print("❌ No data received")
@@ -387,14 +392,19 @@ def register_face_json(employee_id):
         print(f"✅ Employee found: {employee.nama} (ID: {employee.id})")
         
         # Get face engine
-        from face_engine import get_face_engine
-        engine = get_face_engine()
+        try:
+            from face_engine import get_face_engine
+            engine = get_face_engine()
+        except Exception as e:
+            print(f"❌ Error loading face engine: {e}")
+            return jsonify({"error": f"Face engine error: {str(e)}"}), 500
         
         if engine is None:
             print("❌ Face engine not available")
             return jsonify({"error": "Face engine not available"}), 500
         
         valid_encodings = []
+        failed_images = []
         
         for idx, img_data in enumerate(images):
             try:
@@ -402,52 +412,79 @@ def register_face_json(employee_id):
                 if img_data.startswith('data:image'):
                     img_data = img_data.split(',')[1]
                 
-                # Decode base64
-                img_bytes = base64.b64decode(img_data)
-                print(f"📸 Image {idx+1}: Decoded {len(img_bytes)} bytes")
+                # Check if it's valid base64
+                try:
+                    img_bytes = base64.b64decode(img_data)
+                    print(f"📸 Image {idx+1}: Decoded {len(img_bytes)} bytes")
+                except Exception as e:
+                    print(f"❌ Image {idx+1}: Invalid base64 - {e}")
+                    failed_images.append(idx + 1)
+                    continue
                 
                 # Try to extract encoding
                 encoding = engine.extract_face_encoding(img_bytes)
                 
-                if encoding is not None:
+                if encoding is not None and len(encoding) > 0:
                     valid_encodings.append(encoding)
-                    print(f"✅ Image {idx+1}: Face encoded successfully")
+                    print(f"✅ Image {idx+1}: Face encoded successfully (dimensions: {len(encoding)})")
                 else:
                     print(f"⚠️ Image {idx+1}: No face detected")
+                    failed_images.append(idx + 1)
                     
             except Exception as e:
                 print(f"❌ Error processing image {idx+1}: {e}")
+                failed_images.append(idx + 1)
                 continue
         
+        print(f"📊 Summary: {len(valid_encodings)} valid faces, {len(failed_images)} failed")
+        
         if len(valid_encodings) < 3:
-            print(f"❌ Only {len(valid_encodings)} valid faces, need at least 3")
             return jsonify({
-                "error": f"Hanya {len(valid_encodings)} wajah valid dari {len(images)} gambar. Minimal 3 diperlukan."
+                "error": f"Hanya {len(valid_encodings)} wajah valid dari {len(images)} gambar. Minimal 3 diperlukan.",
+                "details": {
+                    "valid": len(valid_encodings),
+                    "total": len(images),
+                    "failed": failed_images
+                }
             }), 400
         
         # Use average encoding
-        avg_encoding = np.mean(valid_encodings, axis=0).tolist()
-        print(f"✅ Created average encoding from {len(valid_encodings)} faces")
+        try:
+            avg_encoding = np.mean(valid_encodings, axis=0).tolist()
+            print(f"✅ Created average encoding from {len(valid_encodings)} faces")
+        except Exception as e:
+            print(f"❌ Error creating average encoding: {e}")
+            return jsonify({"error": f"Error creating average encoding: {str(e)}"}), 500
         
         # Save to database
-        FaceEncoding.query.filter_by(employee_id=employee_id).delete()
-        
-        face_encoding = FaceEncoding(
-            employee_id=employee_id,
-            encoding=avg_encoding
-        )
-        db.session.add(face_encoding)
-        db.session.commit()
-        print(f"💾 Saved face encoding to database for employee {employee_id}")
+        try:
+            FaceEncoding.query.filter_by(employee_id=employee_id).delete()
+            
+            face_encoding = FaceEncoding(
+                employee_id=employee_id,
+                encoding=avg_encoding
+            )
+            db.session.add(face_encoding)
+            db.session.commit()
+            print(f"💾 Saved face encoding to database for employee {employee_id}")
+        except Exception as e:
+            print(f"❌ Error saving to database: {e}")
+            db.session.rollback()
+            return jsonify({"error": f"Database error: {str(e)}"}), 500
         
         # Add to engine cache
-        engine.add_face_encoding(employee_id, avg_encoding)
-        print(f"💾 Added face encoding to cache for employee {employee_id}")
+        try:
+            engine.add_face_encoding(employee_id, avg_encoding)
+            print(f"💾 Added face encoding to cache for employee {employee_id}")
+        except Exception as e:
+            print(f"⚠️ Error adding to cache: {e}")
         
         return jsonify({
             "message": f"Wajah berhasil diregistrasi dengan {len(valid_encodings)} gambar",
             "employee_id": employee_id,
-            "images_processed": len(valid_encodings)
+            "images_processed": len(valid_encodings),
+            "total_images": len(images),
+            "failed_images": failed_images
         }), 200
         
     except Exception as e:

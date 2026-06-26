@@ -1109,7 +1109,8 @@
         console.log('Sending to server:', {
             employee_id: selectedEmployee.id,
             images_count: imageData.length,
-            first_image_preview: imageData[0]?.substring(0, 100) + '...'
+            first_image_preview: imageData[0]?.substring(0, 100) + '...',
+            image_sizes: imageData.map(img => img.length)
         });
         
         const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
@@ -1120,10 +1121,9 @@
             body: JSON.stringify({
                 images: imageData
             })
-        });
-        
-        // DEBUG: Log response
+        });        
         console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
         
         const result = await response.json();
         console.log('Response data:', result);
@@ -1149,43 +1149,79 @@
             showSaveError(result.error || 'Gagal menyimpan data');
         }
         
-        } catch (error) {
+    } catch (error) {
         console.error('Registration Error:', error);
         showSaveError('Error: ' + error.message);
-        }
-        }
+    }
+}
+    // Fungsi kompresi gambar
+    function compressImage(dataUrl, maxWidth = 800, maxHeight = 600, quality = 0.8) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                
+                // Resize if too large
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width = Math.floor(width * ratio);
+                    height = Math.floor(height * ratio);
+                }
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.src = dataUrl;
+        });
+    }
 
-        function showSaveError(msg) {
-            document.getElementById('saveProgress').classList.add('hidden');
-            document.getElementById('saveError').classList.remove('hidden');
-            document.getElementById('saveErrorMessage').textContent = msg;
-            document.getElementById('errorDetails').textContent = 'Silakan coba lagi.';
+    // Ubah fungsi captureFace:
+        async function captureFace() {
+        if (!videoStream) {
+            alert('Nyalakan kamera terlebih dahulu');
+            return;
         }
-
-        function retrySave() {
-            document.getElementById('saveError').classList.add('hidden');
-            document.getElementById('saveContent').classList.remove('hidden');
-        }
-
-        function startNewRegistration() {
-            selectedEmployee = null;
-            capturedImages = [];
-            currentStep = 1;
+        
+        document.getElementById('captureIndicator').classList.remove('hidden');
+        
+        try {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            updateProgress();
+            // Compress image
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            const compressedData = await compressImage(imageData, 800, 600, 0.8);
+            
+            capturedImages.push({
+                id: Date.now(),
+                data: compressedData,
+                quality: Math.floor(Math.random() * 30) + 70,
+                timestamp: new Date().toLocaleTimeString('id-ID')
+            });
+            
             updateCapturePreviews();
-            document.getElementById('selectedEmployeeInfo').classList.remove('hidden');
-            document.getElementById('employeeDetails').classList.add('hidden');
-            document.getElementById('saveSuccess').classList.add('hidden');
-            document.getElementById('saveContent').classList.remove('hidden');
-            document.getElementById('saveBtn').style.display = '';
-            document.getElementById('backToStep3Btn').style.display = '';
-            document.getElementById('saveError').classList.add('hidden');
+            document.getElementById('captureIndicator').classList.add('hidden');
             
-            stopCamera();
-            loadEmployees();
-        }
-
+            if (capturedImages.length >= 3) {
+                document.getElementById('nextToStep3').disabled = false;
+            }
+            
+            showToast('success', `Gambar ${capturedImages.length}/3 berhasil`);
+            
+            } catch (error) {
+            console.error('Capture Error:', error);
+            document.getElementById('captureIndicator').classList.add('hidden');
+            alert('Gagal mengambil gambar: ' + error.message);
+            }
+            }
         // ===============================
         // TOAST
         // ===============================
