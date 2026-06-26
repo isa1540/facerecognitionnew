@@ -180,7 +180,7 @@ def api_karyawan():
 
 @app.route("/api/karyawan", methods=["POST"])
 def api_create_employee():
-
+    
     nama = request.form.get("nama")
     email = request.form.get("email")
     shift_id = request.form.get("shift_id")
@@ -192,6 +192,15 @@ def api_create_employee():
         }), 400
 
     kode = str(uuid.uuid4())[:8].upper()
+
+    # Validate shift_id if provided
+    if shift_id:
+        shift = ShiftSetting.query.get(int(shift_id))
+        if not shift:
+            return jsonify({
+                "success": False,
+                "message": "Shift tidak ditemukan"
+            }), 400
 
     employee = Employee(
         kode=kode,
@@ -668,6 +677,13 @@ def api_attendance_today():
                     check_out = attendance.check_out.strftime('%H:%M') if attendance.check_out else None
                     status = 'PULANG'
             
+            # Safe shift name access
+            shift_name = None
+            if emp.shift_id:
+                shift = ShiftSetting.query.get(emp.shift_id)
+                if shift:
+                    shift_name = shift.nama
+            
             result.append({
                 'id': emp.id,
                 'nama': emp.nama,
@@ -676,7 +692,7 @@ def api_attendance_today():
                 'check_in': check_in,
                 'check_out': check_out,
                 'has_face': has_face,
-                'shift': emp.shift.nama if emp.shift else None
+                'shift': shift_name
             })
         
         # Sort: HADIR first, then PULANG, then BELUM ABSEN
@@ -695,6 +711,8 @@ def api_attendance_today():
         })
     except Exception as e:
         print(f"Error in attendance_today: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'message': str(e)
@@ -731,6 +749,40 @@ def api_attendance_recent():
         })
     except Exception as e:
         print(f"Error in attendance_recent: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route("/api/dashboard/late-today", methods=["GET"])
+def api_late_today():
+    """Get late employees today"""
+    try:
+        today = date.today()
+        
+        # Get all attendance today
+        attendances = Attendance.query.filter_by(tanggal=today).all()
+        
+        late_employees = []
+        for att in attendances:
+            if att.status == 'TERLAMBAT':
+                employee = Employee.query.get(att.employee_id)
+                if employee:
+                    late_employees.append({
+                        'id': employee.id,
+                        'nama': employee.nama,
+                        'kode': employee.kode,
+                        'check_in': att.check_in.strftime('%H:%M') if att.check_in else None,
+                        'status': att.status
+                    })
+        
+        return jsonify({
+            'success': True,
+            'data': late_employees,
+            'total': len(late_employees)
+        })
+    except Exception as e:
+        print(f"Error in late_today: {e}")
         return jsonify({
             'success': False,
             'message': str(e)
@@ -797,7 +849,7 @@ def seed_employees():
         print(f"✅ {len(employees)} employees seeded successfully!")
     else:
         print(f"✅ Employees already exist: {Employee.query.count()} records")
-        
+
 # Panggil fungsi setelah db.init_app
 with app.app_context():
     db.create_all()
