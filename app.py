@@ -52,7 +52,7 @@ def create_app():
 
     # penting!
     Config.init_app(app)
-
+    
     return app
 
 app = create_app()
