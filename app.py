@@ -572,7 +572,169 @@ def register_face_page():
     """Face registration page"""
     return render_template("register_face.html")
 
+# ===============================
+# DASHBOARD API
+# ===============================
+@app.route("/api/dashboard-stats", methods=["GET"])
+def api_dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        # Total employees
+        total_employees = Employee.query.count()
+        
+        # Active employees
+        active_employees = Employee.query.filter_by(aktif=True).count()
+        
+        # Face registered
+        face_registered = FaceEncoding.query.count()
+        
+        # Today's attendance
+        today = date.today()
+        today_attendance = Attendance.query.filter_by(tanggal=today).count()
+        
+        # Today's check-in count
+        today_checkin = Attendance.query.filter(
+            Attendance.tanggal == today,
+            Attendance.check_in.isnot(None)
+        ).count()
+        
+        # Today's check-out count
+        today_checkout = Attendance.query.filter(
+            Attendance.tanggal == today,
+            Attendance.check_out.isnot(None)
+        ).count()
+        
+        # This month attendance
+        first_day = date(today.year, today.month, 1)
+        month_attendance = Attendance.query.filter(
+            Attendance.tanggal >= first_day,
+            Attendance.tanggal <= today
+        ).count()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_employees': total_employees,
+                'active_employees': active_employees,
+                'face_registered': face_registered,
+                'face_registration_rate': round((face_registered / total_employees * 100) if total_employees > 0 else 0, 1),
+                'today_attendance': today_attendance,
+                'today_checkin': today_checkin,
+                'today_checkout': today_checkout,
+                'month_attendance': month_attendance,
+                'registration_trend': [
+                    {'label': 'Terdaftar', 'value': face_registered},
+                    {'label': 'Belum', 'value': total_employees - face_registered}
+                ]
+            }
+        })
+    except Exception as e:
+        print(f"Error in dashboard_stats: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 
+
+@app.route("/api/attendance-today", methods=["GET"])
+def api_attendance_today():
+    """Get today's attendance list"""
+    try:
+        today = date.today()
+        
+        # Get all employees with their attendance today
+        employees = Employee.query.filter_by(aktif=True).all()
+        
+        result = []
+        for emp in employees:
+            # Check if employee has attendance today
+            attendance = Attendance.query.filter_by(
+                employee_id=emp.id,
+                tanggal=today
+            ).first()
+            
+            # Check if employee has face registered
+            has_face = FaceEncoding.query.filter_by(employee_id=emp.id).first() is not None
+            
+            status = 'BELUM ABSEN'
+            check_in = None
+            check_out = None
+            
+            if attendance:
+                if attendance.check_in:
+                    check_in = attendance.check_in.strftime('%H:%M') if attendance.check_in else None
+                    status = 'HADIR'
+                if attendance.check_out:
+                    check_out = attendance.check_out.strftime('%H:%M') if attendance.check_out else None
+                    status = 'PULANG'
+            
+            result.append({
+                'id': emp.id,
+                'nama': emp.nama,
+                'kode': emp.kode,
+                'status': status,
+                'check_in': check_in,
+                'check_out': check_out,
+                'has_face': has_face,
+                'shift': emp.shift.nama if emp.shift else None
+            })
+        
+        # Sort: HADIR first, then PULANG, then BELUM ABSEN
+        status_order = {'HADIR': 0, 'PULANG': 1, 'BELUM ABSEN': 2}
+        result.sort(key=lambda x: status_order.get(x['status'], 3))
+        
+        return jsonify({
+            'success': True,
+            'data': result,
+            'summary': {
+                'total': len(result),
+                'hadir': sum(1 for r in result if r['status'] == 'HADIR'),
+                'pulang': sum(1 for r in result if r['status'] == 'PULANG'),
+                'belum': sum(1 for r in result if r['status'] == 'BELUM ABSEN')
+            }
+        })
+    except Exception as e:
+        print(f"Error in attendance_today: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@app.route("/api/attendance-recent", methods=["GET"])
+def api_attendance_recent():
+    """Get recent attendance records"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        
+        recent = Attendance.query.order_by(
+            Attendance.dibuat.desc()
+        ).limit(limit).all()
+        
+        result = []
+        for att in recent:
+            employee = Employee.query.get(att.employee_id)
+            result.append({
+                'id': att.id,
+                'employee_name': employee.nama if employee else 'Unknown',
+                'employee_kode': employee.kode if employee else 'Unknown',
+                'tanggal': att.tanggal.strftime('%Y-%m-%d'),
+                'check_in': att.check_in.strftime('%H:%M') if att.check_in else None,
+                'check_out': att.check_out.strftime('%H:%M') if att.check_out else None,
+                'status': att.status,
+                'similarity': att.similarity
+            })
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        print(f"Error in attendance_recent: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
 # ===============================
 # LOCAL ONLY
 # ===============================
