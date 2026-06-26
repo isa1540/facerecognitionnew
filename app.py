@@ -335,6 +335,132 @@ def register_face(employee_id):
     return {"message": "Face registered"}
 
 # ===============================
+# FACE ENCODING - JSON SUPPORT
+# ===============================
+@app.route("/face/register-json/<int:employee_id>", methods=["POST"])
+def register_face_json(employee_id):
+    """Register face using JSON with base64 images (for webcam capture)"""
+    try:
+        data = request.json
+        images = data.get('images', [])
+        
+        if not images or len(images) < 3:
+            return jsonify({
+                "error": f"Minimal 3 gambar diperlukan. Dikirim: {len(images)}"
+            }), 400
+        
+        # Get employee
+        employee = Employee.query.get(employee_id)
+        if not employee:
+            return jsonify({"error": "Karyawan tidak ditemukan"}), 404
+        
+        # Process images for face detection
+        import base64
+        import cv2
+        import numpy as np
+        
+        valid_images = []
+        for img_data in images:
+            try:
+                if img_data.startswith('data:image'):
+                    img_data = img_data.split(',')[1]
+                
+                img_bytes = base64.b64decode(img_data)
+                nparr = np.frombuffer(img_bytes, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                if img is not None:
+                    valid_images.append(img)
+            except Exception as e:
+                print(f"Error processing image: {e}")
+                continue
+        
+        if len(valid_images) < 3:
+            return jsonify({
+                "error": f"Hanya {len(valid_images)} gambar valid. Minimal 3 gambar diperlukan."
+            }), 400
+        
+        # Use face engine for encoding
+        from face_engine import get_face_engine
+        engine = get_face_engine()
+        
+        # Try to extract face encoding from each image
+        best_encoding = None
+        for img in valid_images:
+            success, img_encoded = cv2.imencode('.jpg', img)
+            if not success:
+                continue
+            
+            encoding = engine.extract_face_encoding(img_encoded.tobytes())
+            if encoding is not None:
+                best_encoding = encoding
+                break
+        
+        if best_encoding is None:
+            return jsonify({"error": "Tidak dapat mendeteksi wajah pada gambar"}), 422
+        
+        # Save to database
+        FaceEncoding.query.filter_by(employee_id=employee_id).delete()
+        
+        face_encoding = FaceEncoding(
+            employee_id=employee_id,
+            encoding=best_encoding
+        )
+        db.session.add(face_encoding)
+        db.session.commit()
+        
+        # Add to engine cache
+        engine.add_face_encoding(employee_id, best_encoding)
+        
+        return jsonify({
+            "message": "Wajah berhasil diregistrasi",
+            "employee_id": employee_id,
+            "images_processed": len(valid_images)
+        }), 200
+        
+    except Exception as e:
+        print(f"Error in register_face_json: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# ===============================
+# REGISTRATIONS HISTORY (SIMPLE)
+# ===============================
+@app.route("/api/registrations", methods=["GET"])
+def get_registrations_api():
+    """Get recent face registrations history"""
+    try:
+        # Get employees that have face encoding
+        employees_with_face = db.session.query(Employee).join(
+            FaceEncoding, Employee.id == FaceEncoding.employee_id
+        ).order_by(
+            FaceEncoding.dibuat.desc()
+        ).limit(10).all()
+        
+        result = []
+        for employee in employees_with_face:
+            face = FaceEncoding.query.filter_by(employee_id=employee.id).first()
+            if face:
+                result.append({
+                    'employee_id': employee.id,
+                    'employee_name': employee.nama,
+                    'timestamp': face.dibuat.isoformat(),
+                    'images_count': 3
+                })
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        print(f"Error in get_registrations_api: {e}")
+        return jsonify({
+            'success': False,
+            'data': []
+        }), 500
+
+# ===============================
 # ATTENDANCE
 # ===============================
 @app.route("/attendance", methods=["POST"])
@@ -440,7 +566,7 @@ def laporan_page():
 @app.route("/izin")
 def izin_page():
     return render_template("izin.html")
-    
+
 @app.route("/register-face")
 def register_face_page():
     """Face registration page"""
