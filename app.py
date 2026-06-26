@@ -45,7 +45,8 @@ def create_app():
     app.secret_key = Config.SECRET_KEY
 
     app.config["SQLALCHEMY_DATABASE_URI"] = Config.build_database_uri()
-
+    print("DATABASE URI:")
+    print(app.config["SQLALCHEMY_DATABASE_URI"])
     db.init_app(app)
     migrate.init_app(app, db)
 
