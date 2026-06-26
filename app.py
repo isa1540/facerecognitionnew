@@ -33,7 +33,7 @@ from models import (
     FaceEncoding,
     LeaveRequest
 )
-
+from sqlalchemy import func
 # ===============================
 # APP FACTORY
 # ===============================
@@ -137,6 +137,8 @@ def create_employee():
     db.session.commit()
     return jsonify({"id": emp.id})
 
+
+
 @app.route("/employees", methods=["GET"])
 def list_employees():
     employees = Employee.query.all()
@@ -149,6 +151,147 @@ def list_employees():
             "aktif": e.aktif
         } for e in employees
     ])
+@app.route("/api/karyawan", methods=["GET"])
+def api_karyawan():
+
+    employees = Employee.query.all()
+
+    hasil = []
+
+    for e in employees:
+
+        face = FaceEncoding.query.filter_by(employee_id=e.id).first()
+
+        hasil.append({
+            "id": e.id,
+            "kode": e.kode,
+            "nama": e.nama,
+            "email": e.email,
+            "shift_id": e.shift_id,
+            "aktif": e.aktif,
+            "dibuat": e.dibuat.isoformat() if e.dibuat else None,
+            "face_registered": face is not None
+        })
+
+    return jsonify({
+        "success": True,
+        "data": hasil
+    })
+
+@app.route("/api/karyawan", methods=["POST"])
+def api_create_employee():
+
+    nama = request.form.get("nama")
+    email = request.form.get("email")
+    shift_id = request.form.get("shift_id")
+
+    if not nama:
+        return jsonify({
+            "success": False,
+            "message": "Nama wajib diisi"
+        }), 400
+
+    kode = str(uuid.uuid4())[:8].upper()
+
+    employee = Employee(
+        kode=kode,
+        nama=nama,
+        email=email if email else None,
+        shift_id=int(shift_id) if shift_id else None,
+        aktif=True
+    )
+
+    db.session.add(employee)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Karyawan berhasil ditambahkan",
+        "kode": kode,
+        "id": employee.id
+    })
+
+@app.route("/api/karyawan/<int:id>", methods=["PUT"])
+def api_update_employee(id):
+
+    emp = Employee.query.get_or_404(id)
+
+    data = request.json
+
+    emp.nama = data.get("nama")
+    emp.email = data.get("email")
+    emp.shift_id = data.get("shift_id")
+    emp.aktif = data.get("aktif", True)
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True
+    })
+
+@app.route("/api/karyawan/<int:id>", methods=["DELETE"])
+def api_delete_employee(id):
+
+    emp = Employee.query.get_or_404(id)
+
+    emp.aktif = False
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True
+    })
+
+@app.route("/api/karyawan-with-face-status")
+def api_face_status():
+
+    employees = Employee.query.all()
+
+    data = []
+
+    for e in employees:
+
+        registered = FaceEncoding.query.filter_by(
+            employee_id=e.id
+        ).first() is not None
+
+        data.append({
+            "id": e.id,
+            "kode": e.kode,
+            "nama": e.nama,
+            "email": e.email,
+            "shift_id": e.shift_id,
+            "aktif": e.aktif,
+            "dibuat": e.dibuat.isoformat() if e.dibuat else None,
+            "face_registered": registered
+        })
+
+    return jsonify({
+        "success": True,
+        "data": data
+    })
+
+@app.route("/api/face-cache-stats")
+def api_face_cache():
+
+    total_employee = Employee.query.count()
+
+    total_face = FaceEncoding.query.count()
+
+    rate = 0
+
+    if total_employee > 0:
+        rate = round(total_face / total_employee * 100)
+
+    return jsonify({
+        "success": True,
+        "stats": {
+            "total_cached_faces": total_face,
+            "employees_with_face": total_face,
+            "registration_rate": rate
+        }
+    })
+
 
 # ===============================
 # SHIFT
@@ -250,6 +393,16 @@ def leave():
     db.session.commit()
     return {"id": req.id}
 
+# ===============================
+# LAPORAN API
+# ===============================
+@app.route("/api/laporan")
+def api_laporan():
+    return jsonify({
+        "success": True,
+        "message": "Export belum dibuat"
+    })
+    
 @app.route("/")
 def index():
     return render_template("login.html")
@@ -296,7 +449,14 @@ def register_page():
 
 @app.route("/register-face")
 def register_face_page():
-    return render_template("register_face_general.html")
+
+    employee_id = request.args.get("employee_id")
+
+    return render_template(
+        "register_face_general.html",
+        employee_id=employee_id
+    )
+
 
 # ===============================
 # LOCAL ONLY

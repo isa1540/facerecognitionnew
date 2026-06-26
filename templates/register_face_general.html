@@ -3,375 +3,1448 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pilih Karyawan untuk Registrasi Wajah</title>
+    <title>Registrasi Wajah - Sistem Absensi</title>
+    <!-- Gunakan format url_for Flask agar tidak 404 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .camera-container { position: relative; }
+        .face-overlay { position: absolute; border: 3px solid rgba(59, 130, 246, 0.8); border-radius: 10px; }
+        .progress-ring { transform: rotate(-90deg); transform-origin: 50% 50%; }
+        .quality-indicator { transition: all 0.3s ease; }
+        .step-card { transition: all 0.3s ease; }
+        .step-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .registration-success { animation: successPulse 2s infinite; }
+        @keyframes successPulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .capture-preview { transition: transform 0.3s ease; }
+        .capture-preview:hover { transform: scale(1.05); }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .scrollbar-thin::-webkit-scrollbar { width: 4px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-white shadow-sm border-b">
+<body class="bg-gradient-to-br from-blue-50 to-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
         <div class="container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center">
-                <div class="flex items-center">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
                     <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-                        <i class="fas fa-users text-white"></i>
+                        <i class="fas fa-fingerprint text-white text-xl"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-800">Registrasi Wajah Karyawan</h1>
-                        <p class="text-sm text-gray-600">Pilih karyawan untuk registrasi wajah</p>
+                        <h1 class="text-xl font-bold text-gray-800">Registrasi Wajah</h1>
+                        <p class="text-sm text-gray-600">Sistem Pendaftaran Wajah Karyawan</p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <a href="/dashboard" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium">
-                        <i class="fas fa-arrow-left mr-2"></i>Dashboard
-                    </a>
-                    <a href="/karyawan" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
-                        <i class="fas fa-users mr-2"></i>Manajemen Karyawan
+                    <div class="text-right hidden md:block">
+                        <p class="text-sm font-medium text-gray-800" id="currentTime">--:--:--</p>
+                        <p class="text-xs text-gray-600" id="currentDate">-- --- ----</p>
+                    </div>
+                    <a href="/dashboard" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition duration-300">
+                        <i class="fas fa-arrow-left mr-2"></i>Kembali ke Dashboard
                     </a>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
-        <!-- Info Card -->
-        <div class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-6">
-            <div class="flex items-center">
-                <i class="fas fa-info-circle text-blue-600 text-2xl mr-4"></i>
-                <div>
-                    <h3 class="font-semibold text-blue-800">Informasi Registrasi Wajah</h3>
-                    <p class="text-blue-700 mt-1">
-                        • Pilih karyawan yang akan diregistrasi wajahnya<br>
-                        • Sistem membutuhkan minimal 1 foto wajah yang jelas<br>
-                        • Registrasi wajah akan digunakan untuk sistem absensi
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search and Filter -->
-        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="w-full md:w-auto">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Cari Karyawan</label>
-                    <div class="relative">
-                        <input type="text" id="searchEmployee" 
-                               class="w-full md:w-96 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="Cari berdasarkan nama, kode, atau email...">
-                        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
-                    </div>
-                </div>
-                
-                <div class="flex items-center space-x-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Filter Status</label>
-                        <select id="filterStatus" class="px-4 py-2 border border-gray-300 rounded-lg">
-                            <option value="all">Semua Status</option>
-                            <option value="registered">Sudah Diregistrasi</option>
-                            <option value="not_registered">Belum Diregistrasi</option>
-                        </select>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Registration Steps -->
+            <div class="lg:col-span-2">
+                <!-- Progress & Status -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-800">Pendaftaran Wajah Karyawan</h2>
+                            <p class="text-gray-600">Registrasi wajah untuk sistem absensi</p>
+                        </div>
+                        <div class="mt-4 md:mt-0">
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center">
+                                    <span class="status-dot bg-green-500 mr-2"></span>
+                                    <span class="text-sm text-gray-700">Sistem Aktif</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-database text-blue-600 mr-2"></i>
+                                    <span class="text-sm text-gray-700" id="cacheCount">0</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Urutkan</label>
-                        <select id="sortBy" class="px-4 py-2 border border-gray-300 rounded-lg">
-                            <option value="name">Nama A-Z</option>
-                            <option value="name_desc">Nama Z-A</option>
-                            <option value="code">Kode</option>
-                            <option value="date">Tanggal Bergabung</option>
-                        </select>
+                    <!-- Progress Bar -->
+                    <div class="mb-8">
+                        <div class="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>Proses Registrasi</span>
+                            <span id="progressText">0/4 Langkah</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3">
+                            <div id="progressBar" class="bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Steps -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div id="step1" class="step-card bg-blue-50 border border-blue-200 p-4 rounded-xl text-center">
+                            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-user text-blue-600 text-xl"></i>
+                            </div>
+                            <p class="font-medium text-blue-800">1. Pilih Karyawan</p>
+                            <p class="text-xs text-blue-600 mt-1">Pilih karyawan yang akan diregistrasi</p>
+                        </div>
+                        
+                        <div id="step2" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
+                            <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-camera text-gray-400 text-xl"></i>
+                            </div>
+                            <p class="font-medium text-gray-600">2. Ambil Gambar</p>
+                            <p class="text-xs text-gray-500 mt-1">Ambil foto wajah karyawan</p>
+                        </div>
+                        
+                        <div id="step3" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
+                            <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-check-circle text-gray-400 text-xl"></i>
+                            </div>
+                            <p class="font-medium text-gray-600">3. Validasi</p>
+                            <p class="text-xs text-gray-500 mt-1">Validasi kualitas gambar</p>
+                        </div>
+                        
+                        <div id="step4" class="step-card bg-gray-50 border border-gray-200 p-4 rounded-xl text-center">
+                            <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-database text-gray-400 text-xl"></i>
+                            </div>
+                            <p class="font-medium text-gray-600">4. Simpan</p>
+                            <p class="text-xs text-gray-500 mt-1">Simpan ke database</p>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Employees Table -->
-        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div class="px-6 py-4 border-b bg-gray-50">
-                <h3 class="text-lg font-semibold text-gray-800">Daftar Karyawan</h3>
-            </div>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Kode</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Nama</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Email</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Shift</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Status Wajah</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Bergabung</th>
-                            <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200" id="employeeTable">
-                        <!-- Data will be loaded here -->
-                        <tr id="loadingRow">
-                            <td colspan="7" class="py-12 text-center">
-                                <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-                                <p class="text-gray-600 mt-2">Memuat data karyawan...</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="px-6 py-4 border-t bg-gray-50">
-                <div class="flex justify-between items-center">
-                    <div class="text-sm text-gray-600">
-                        <span id="employeeCount">0</span> karyawan ditemukan
+                <!-- Step 1: Employee Selection -->
+                <div id="step1Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-user mr-2 text-blue-600"></i> Pilih Karyawan
+                    </h3>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Cari Karyawan
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="searchEmployee" 
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Cari berdasarkan nama, kode, atau email..."
+                                   onkeyup="searchEmployees()">
+                            <div class="absolute right-3 top-3">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="refreshEmployeeList()" class="px-4 py-2 text-gray-600 hover:text-gray-800">
-                            <i class="fas fa-sync-alt"></i>
+                    
+                    <div class="max-h-96 overflow-y-auto scrollbar-thin pr-2">
+                        <div id="employeeList" class="space-y-3">
+                            <!-- Employees will be loaded here -->
+                            <div class="text-center py-8">
+                                <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
+                                <p class="text-gray-600">Memuat data karyawan...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-between items-center">
+                        <div class="text-sm text-gray-600">
+                            <span id="selectedEmployeeCount">0</span> karyawan terpilih
+                        </div>
+                        <button id="nextToStep2" onclick="goToStep2()" disabled
+                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                            Lanjut ke Step 2 <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Face Capture -->
+                <div id="step2Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-camera mr-2 text-blue-600"></i> Ambil Gambar Wajah
+                        </h3>
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center" id="cameraStatus">
+                                <i class="fas fa-video text-gray-400 mr-2"></i>
+                                <span class="text-sm text-gray-600">Kamera: Off</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-sm text-gray-600">Kualitas:</span>
+                                <span id="qualityScore" class="ml-2 px-2 py-1 bg-gray-100 rounded text-sm">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Camera Container -->
+                    <div class="relative">
+                        <div class="camera-container bg-gray-900 rounded-xl overflow-hidden">
+                            <video id="video" autoplay playsinline class="w-full h-96 object-cover"></video>
+                            <canvas id="canvas" class="hidden"></canvas>
+                            
+                            <!-- Face Overlay Guide -->
+                            <div class="face-overlay absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-80">
+                                <div class="absolute inset-0 border-2 border-white opacity-30 rounded-lg"></div>
+                                <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                                    <div class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                        <i class="fas fa-user mr-1"></i> Posisikan Wajah Di Sini
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quality Indicators -->
+                            <div id="qualityIndicators" class="absolute top-4 left-4 space-y-2 hidden">
+                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                    <i class="fas fa-sun mr-2 text-yellow-400"></i>
+                                    <span class="text-sm">Pencahayaan: <span id="brightnessScore">-</span></span>
+                                </div>
+                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                    <i class="fas fa-eye mr-2 text-green-400"></i>
+                                    <span class="text-sm">Ketajaman: <span id="sharpnessScore">-</span></span>
+                                </div>
+                                <div class="flex items-center bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+                                    <i class="fas fa-expand-alt mr-2 text-blue-400"></i>
+                                    <span class="text-sm">Posisi: <span id="positionScore">-</span></span>
+                                </div>
+                            </div>
+
+                            <!-- Capture Indicator -->
+                            <div id="captureIndicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-70 hidden">
+                                <div class="text-center">
+                                    <div class="w-20 h-20 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p class="text-white text-xl font-semibold">Menganalisis Wajah...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Camera Controls -->
+                        <div class="flex flex-wrap justify-center gap-4 mt-6">
+                            <button id="startCameraBtn" onclick="startCamera()" 
+                                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                <i class="fas fa-video mr-2"></i> Hidupkan Kamera
+                            </button>
+                            
+                            <button id="captureBtn" onclick="captureFace()" disabled
+                                    class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                <i class="fas fa-camera mr-2"></i> Ambil Gambar
+                            </button>
+                            
+                            <button onclick="stopCamera()" 
+                                    class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                <i class="fas fa-stop mr-2"></i> Matikan Kamera
+                            </button>
+                            
+                            <button onclick="switchCamera()" 
+                                    class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold flex items-center transition duration-300">
+                                <i class="fas fa-sync-alt mr-2"></i> Ganti Kamera
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Captured Previews -->
+                    <div class="mt-8">
+                        <h4 class="font-medium text-gray-700 mb-4">Gambar yang Telah Diambil:</h4>
+                        <div id="capturePreviews" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center py-8">
+                                <i class="fas fa-images text-gray-300 text-3xl mb-3"></i>
+                                <p class="text-sm text-gray-500">Belum ada gambar</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-between">
+                        <button onclick="goToStep1()" 
+                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Step 1
+                        </button>
+                        <button id="nextToStep3" onclick="goToStep3()" disabled
+                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                            Lanjut ke Validasi <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Validation -->
+                <div id="step3Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-check-circle mr-2 text-blue-600"></i> Validasi Gambar Wajah
+                    </h3>
+                    
+                    <div class="mb-6">
+                        <p class="text-gray-600 mb-4">Validasi kualitas gambar untuk memastikan wajah dapat dikenali dengan baik:</p>
+                        
+                        <div id="validationResults" class="space-y-4">
+                            <!-- Validation results will appear here -->
+                            <div class="text-center py-8">
+                                <i class="fas fa-spinner fa-spin text-gray-400 text-2xl mb-3"></i>
+                                <p class="text-gray-600">Memuat hasil validasi...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <h4 class="font-medium text-gray-700 mb-4">Rekomendasi:</h4>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <ul class="space-y-2 text-sm text-gray-700">
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Ambil gambar dengan pencahayaan yang cukup</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Pastikan wajah menghadap lurus ke kamera</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Hindari bayangan pada wajah</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Minimal ambil 3 gambar dari sudut berbeda</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-between">
+                        <button onclick="goToStep2()" 
+                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Step 2
+                        </button>
+                        <button id="nextToStep4" onclick="goToStep4()" disabled
+                                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                            Lanjut ke Penyimpanan <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Save to Database -->
+                <div id="step4Content" class="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-gray-100 hidden">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-database mr-2 text-blue-600"></i> Simpan ke Database
+                    </h3>
+                    
+                    <div id="saveContent">
+                        <div class="text-center py-8">
+                            <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-save text-blue-600 text-3xl"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">Siap Menyimpan Data</h4>
+                            <p class="text-gray-600 mb-6">Data wajah akan disimpan ke database sistem</p>
+                            
+                            <div class="max-w-md mx-auto bg-gray-50 p-6 rounded-lg">
+                                <div class="space-y-4">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600">Karyawan:</span>
+                                        <span class="font-semibold" id="saveEmployeeName">-</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600">Jumlah Gambar:</span>
+                                        <span class="font-semibold" id="saveImageCount">0</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600">Status Validasi:</span>
+                                        <span id="saveValidationStatus" class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Valid</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-600">Estimasi Waktu:</span>
+                                        <span class="font-semibold">2-3 detik</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="saveProgress" class="hidden">
+                        <div class="text-center py-8">
+                            <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-spinner fa-spin text-blue-600 text-3xl"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">Menyimpan Data...</h4>
+                            <p class="text-gray-600 mb-6">Harap tunggu, data sedang diproses</p>
+                            
+                            <div class="max-w-md mx-auto">
+                                <div class="w-full bg-gray-200 rounded-full h-3 mb-4">
+                                    <div id="saveProgressBar" class="bg-blue-600 h-3 rounded-full" style="width: 0%"></div>
+                                </div>
+                                <p class="text-sm text-gray-600" id="saveProgressText">Memulai proses...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="saveSuccess" class="hidden">
+                        <div class="text-center py-8">
+                            <div class="success-checkmark w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-check text-green-600 text-4xl"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Berhasil!</h4>
+                            <p class="text-gray-600 mb-6" id="saveSuccessMessage">Data wajah berhasil disimpan</p>
+                            
+                            <div class="max-w-md mx-auto bg-green-50 p-6 rounded-lg">
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-700">Karyawan:</span>
+                                        <span class="font-semibold" id="successEmployeeName">-</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-700">ID Karyawan:</span>
+                                        <span class="font-semibold" id="successEmployeeId">-</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-700">Waktu:</span>
+                                        <span class="font-semibold" id="successTime">-</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-700">Status Cache:</span>
+                                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">Aktif</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="saveError" class="hidden">
+                        <div class="text-center py-8">
+                            <div class="w-24 h-24 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-times text-red-600 text-4xl"></i>
+                            </div>
+                            <h4 class="text-xl font-bold text-gray-800 mb-2">Registrasi Gagal</h4>
+                            <p class="text-gray-600 mb-6" id="saveErrorMessage">Terjadi kesalahan saat menyimpan data</p>
+                            
+                            <div class="max-w-md mx-auto bg-red-50 p-6 rounded-lg">
+                                <p class="text-sm text-red-700 mb-4" id="errorDetails"></p>
+                                <button onclick="retrySave()" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                                    <i class="fas fa-redo mr-2"></i> Coba Lagi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-between">
+                        <button onclick="goToStep3()" id="backToStep3Btn"
+                                class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition duration-300">
+                            <i class="fas fa-arrow-left mr-2"></i> Kembali ke Validasi
+                        </button>
+                        <button id="saveBtn" onclick="saveToDatabase()"
+                                class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition duration-300">
+                            <i class="fas fa-save mr-2"></i> Simpan ke Database
+                        </button>
+                        <button id="newRegistrationBtn" onclick="startNewRegistration()" class="hidden px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition duration-300">
+                            <i class="fas fa-plus mr-2"></i> Registrasi Baru
                         </button>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Instructions -->
-        <div class="mt-8 bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-            <h4 class="font-semibold text-yellow-800 mb-3 flex items-center">
-                <i class="fas fa-lightbulb mr-2"></i>Panduan Registrasi Wajah
-            </h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <h5 class="font-medium text-yellow-700 mb-2">Yang Harus Dilakukan:</h5>
-                    <ul class="text-sm text-yellow-600 space-y-1">
-                        <li class="flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <span>Pilih karyawan yang belum diregistrasi wajahnya</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <span>Pastikan karyawan hadir di tempat</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <span>Siapkan kamera dengan pencahayaan baik</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            <span>Ambil foto dengan wajah menghadap kamera</span>
-                        </li>
-                    </ul>
+
+            <!-- Right Column: Info & Preview -->
+            <div class="space-y-6">
+                <!-- Selected Employee Info -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i> Informasi Karyawan Terpilih
+                    </h3>
+                    
+                    <div id="selectedEmployeeInfo" class="text-center py-8">
+                        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-user text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-600">Pilih karyawan untuk melihat informasi</p>
+                    </div>
+
+                    <div id="employeeDetails" class="hidden">
+                        <div class="space-y-4">
+                            <div class="text-center mb-6">
+                                <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <i class="fas fa-user text-blue-600 text-3xl"></i>
+                                </div>
+                                <h4 class="text-lg font-bold text-gray-800" id="employeeName">-</h4>
+                                <p class="text-sm text-gray-600" id="employeeCode">-</p>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Email</span>
+                                    <span class="font-medium" id="employeeEmail">-</span>
+                                </div>
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Shift</span>
+                                    <span class="font-medium" id="employeeShift">-</span>
+                                </div>
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Status</span>
+                                    <span id="employeeStatus" class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Aktif</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Registrasi</span>
+                                    <span id="faceRegistered" class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Belum</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 pt-6 border-t">
+                            <h4 class="font-medium text-gray-700 mb-3">Instruksi Registrasi:</h4>
+                            <ul class="space-y-2 text-sm text-gray-600">
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Pastikan karyawan sudah terdaftar di sistem</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Ambil gambar dalam kondisi pencahayaan baik</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Minimal 3 gambar dari sudut berbeda</span>
+                                </li>
+                                <li class="flex items-center">
+                                    <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                    <span>Wajah harus menghadap lurus ke kamera</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <h5 class="font-medium text-yellow-700 mb-2">Yang Harus Dihindari:</h5>
-                    <ul class="text-sm text-yellow-600 space-y-1">
-                        <li class="flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            <span>Foto dengan pencahayaan buruk</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            <span>Wajah tertutup kacamata hitam/topi</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            <span>Foto dari jarak terlalu jauh/dekat</span>
-                        </li>
-                        <li class="flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            <span>Ekspresi wajah berlebihan</span>
-                        </li>
-                    </ul>
+
+                <!-- Face Quality Guide -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                        <i class="fas fa-chart-line mr-2 text-blue-600"></i> Panduan Kualitas Wajah
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Pencahayaan</span>
+                                <span class="font-medium">Optimal</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-green-500 h-2 rounded-full" style="width: 90%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Ketajaman</span>
+                                <span class="font-medium">Tajam</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Posisi Wajah</span>
+                                <span class="font-medium">Tengah</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-purple-500 h-2 rounded-full" style="width: 95%"></div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-600">Ukuran Wajah</span>
+                                <span class="font-medium">Optimal</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-yellow-500 h-2 rounded-full" style="width: 88%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto mb-2">
+                                    <div class="w-full h-full bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-check text-green-600 text-xl"></i>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-600">Cahaya Cukup</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="w-16 h-16 mx-auto mb-2">
+                                    <div class="w-full h-full bg-red-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-times text-red-600 text-xl"></i>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-gray-600">Cahaya Kurang</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-server mr-2"></i> Status Sistem
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span>Cache Wajah</span>
+                            <span class="font-bold" id="systemCacheCount">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Kamera</span>
+                            <span class="font-bold" id="systemCameraStatus">Siap</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Database</span>
+                            <span class="font-bold" id="systemDatabaseStatus">Online</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Waktu Proses</span>
+                            <span class="font-bold">1.2s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-blue-500">
+                        <div class="flex justify-between text-sm">
+                            <span>Kapasitas Sistem:</span>
+                            <div class="flex items-center">
+                                <div class="w-20 bg-blue-500 bg-opacity-30 rounded-full h-2 mr-2">
+                                    <div class="bg-green-400 h-2 rounded-full" style="width: 65%"></div>
+                                </div>
+                                <span class="font-bold">65%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Registrations -->
+                <div class="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <i class="fas fa-history mr-2 text-blue-600"></i> Registrasi Terbaru
+                        </h3>
+                        <button onclick="loadRecentRegistrations()" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin pr-2" id="recentRegistrations">
+                        <!-- Recent registrations will appear here -->
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin text-gray-400 mr-2"></i>
+                            <span class="text-gray-600">Memuat data...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- JavaScript -->
-    <script>
-        // Load employees on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadEmployees();
-            
-            // Add event listeners for search and filter
-            document.getElementById('searchEmployee').addEventListener('input', filterEmployees);
-            document.getElementById('filterStatus').addEventListener('change', filterEmployees);
-            document.getElementById('sortBy').addEventListener('change', filterEmployees);
-        });
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-gray-600 text-sm">© 2024 Sistem Registrasi Wajah. Hak Cipta Dilindungi.</p>
+                </div>
+                <div class="flex items-center space-x-6">
+                    <div class="flex items-center text-sm text-gray-600">
+                        <i class="fas fa-shield-alt mr-2 text-green-500"></i>
+                        <span>Data Terenkripsi</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-600">
+                        <i class="fas fa-bolt mr-2 text-yellow-500"></i>
+                        <span>Proses Cepat</span>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-600">
+                        <i class="fas fa-database mr-2 text-blue-500"></i>
+                        <span>Backup Otomatis</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 
-        // Load employees from API
+    <script>
+        // Global variables
+        let videoStream = null;
+        let currentStream = null;
+        let facingMode = 'user';
+        let selectedEmployee = null;
+        let capturedImages = [];
+        let currentStep = 1;
+        
+        // DOM Elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startCameraBtn = document.getElementById('startCameraBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const captureIndicator = document.getElementById('captureIndicator');
+        const qualityIndicators = document.getElementById('qualityIndicators');
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            
+            // Load employees and recent registrations
+            loadEmployees();
+            loadRecentRegistrations();
+            loadCacheCount();
+            
+            // Set current step
+            updateProgress();
+        });
+        
+        // Update date and time
+        function updateDateTime() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleTimeString('id-ID', { hour12: false });
+            document.getElementById('currentDate').textContent = 
+                now.toLocaleDateString('id-ID', options);
+        }
+        
+        // Load employees
         async function loadEmployees() {
             try {
-                const response = await fetch('/api/karyawan-with-face-status');
+                const response = await fetch('/api/karyawan');
                 const data = await response.json();
                 
-                const tbody = document.getElementById('employeeTable');
-                const loadingRow = document.getElementById('loadingRow');
-                const countEl = document.getElementById('employeeCount');
-                
-                if (loadingRow) {
-                    loadingRow.remove();
-                }
-                
-                if (data.success && data.data.length > 0) {
-                    // Store employees globally for filtering
-                    window.employeesData = data.data;
+                if (data.success) {
+                    const container = document.getElementById('employeeList');
+                    let html = '';
                     
-                    // Render initial table
-                    renderEmployees(data.data);
-                    countEl.textContent = data.data.length;
-                } else {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="py-12 text-center">
-                                <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-users text-gray-400 text-2xl"></i>
+                    data.data.forEach(employee => {
+                        const hasFace = employee.face_registered || false;
+                        
+                        html += `
+                            <div class="employee-card border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition"
+                                 onclick="selectEmployee(${employee.id})"
+                                 data-id="${employee.id}"
+                                 data-name="${employee.nama}"
+                                 data-code="${employee.kode}"
+                                 data-email="${employee.email}"
+                                 data-shift="${employee.shift_nama || 'Belum diatur'}"
+                                 data-face="${hasFace}">
+                                <div class="flex items-center">
+                                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                                        <i class="fas fa-user text-blue-600"></i>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <p class="font-medium text-gray-800 truncate">${employee.nama}</p>
+                                                <p class="text-sm text-gray-600">${employee.kode}</p>
+                                            </div>
+                                            <div>
+                                                ${hasFace ? 
+                                                    '<span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">Sudah</span>' : 
+                                                    '<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">Belum</span>'}
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center text-xs text-gray-500 mt-2">
+                                            <i class="fas fa-envelope mr-1"></i>
+                                            <span class="truncate">${employee.email || 'Tidak ada email'}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="text-gray-600 font-medium">Belum ada data karyawan</p>
-                                <p class="text-sm text-gray-500 mt-1">Tambahkan karyawan terlebih dahulu</p>
-                                <a href="/karyawan" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
-                                    <i class="fas fa-user-plus mr-2"></i>Tambah Karyawan
-                                </a>
-                            </td>
-                        </tr>
-                    `;
-                    countEl.textContent = '0';
+                            </div>
+                        `;
+                    });
+                    
+                    container.innerHTML = html;
                 }
-                
             } catch (error) {
                 console.error('Error loading employees:', error);
-                document.getElementById('employeeTable').innerHTML = `
-                    <tr>
-                        <td colspan="7" class="py-12 text-center text-red-600">
-                            <i class="fas fa-exclamation-triangle text-2xl mb-3"></i>
-                            <p>Gagal memuat data karyawan</p>
-                            <button onclick="loadEmployees()" class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm">
-                                <i class="fas fa-redo mr-1"></i> Coba Lagi
-                            </button>
-                        </td>
-                    </tr>
+                document.getElementById('employeeList').innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-exclamation-circle text-red-400 text-2xl mb-3"></i>
+                        <p class="text-gray-600">Gagal memuat data karyawan</p>
+                        <button onclick="loadEmployees()" class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+                            <i class="fas fa-redo mr-1"></i> Coba Lagi
+                        </button>
+                    </div>
                 `;
             }
         }
-
-        // Render employees to table
-        function renderEmployees(employees) {
-            const tbody = document.getElementById('employeeTable');
-            const countEl = document.getElementById('employeeCount');
+        
+        // Search employees
+        function searchEmployees() {
+            const searchTerm = document.getElementById('searchEmployee').value.toLowerCase();
+            const cards = document.querySelectorAll('.employee-card');
+            
+            cards.forEach(card => {
+                const name = card.querySelector('.font-medium').textContent.toLowerCase();
+                const code = card.querySelector('.text-sm.text-gray-600').textContent.toLowerCase();
+                const email = card.querySelector('.truncate').textContent.toLowerCase();
+                
+                if (name.includes(searchTerm) || code.includes(searchTerm) || email.includes(searchTerm)) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        }
+        
+        // Select employee
+        function selectEmployee(employeeId) {
+            // Remove previous selection
+            document.querySelectorAll('.employee-card').forEach(card => {
+                card.classList.remove('border-blue-500', 'bg-blue-50');
+                card.classList.add('border-gray-200');
+            });
+            
+            // Find selected card
+            const selectedCard = document.querySelector(`.employee-card[data-id="${employeeId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.remove('border-gray-200');
+                selectedCard.classList.add('border-blue-500', 'bg-blue-50');
+                
+                // Get employee data
+                selectedEmployee = {
+                    id: parseInt(employeeId),
+                    name: selectedCard.dataset.name,
+                    code: selectedCard.dataset.code,
+                    email: selectedCard.dataset.email,
+                    shift: selectedCard.dataset.shift,
+                    hasFace: selectedCard.dataset.face === 'true'
+                };
+                
+                // Update UI
+                updateSelectedEmployeeInfo();
+                
+                // Enable next button
+                document.getElementById('nextToStep2').disabled = false;
+            }
+        }
+        
+        // Update selected employee info
+        function updateSelectedEmployeeInfo() {
+            if (!selectedEmployee) return;
+            
+            // Update info panel
+            document.getElementById('selectedEmployeeInfo').classList.add('hidden');
+            document.getElementById('employeeDetails').classList.remove('hidden');
+            
+            document.getElementById('employeeName').textContent = selectedEmployee.name;
+            document.getElementById('employeeCode').textContent = selectedEmployee.code;
+            document.getElementById('employeeEmail').textContent = selectedEmployee.email || '-';
+            document.getElementById('employeeShift').textContent = selectedEmployee.shift;
+            
+            // Update face registered status
+            const faceBadge = document.getElementById('faceRegistered');
+            faceBadge.textContent = selectedEmployee.hasFace ? 'Sudah' : 'Belum';
+            faceBadge.className = selectedEmployee.hasFace ? 
+                'px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full' : 
+                'px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full';
+            
+            // Update step 4 save info
+            document.getElementById('saveEmployeeName').textContent = selectedEmployee.name;
+            
+            // Update count
+            document.getElementById('selectedEmployeeCount').textContent = '1';
+        }
+        
+        // Update progress
+        function updateProgress() {
+            // Update step indicators
+            for (let i = 1; i <= 4; i++) {
+                const stepCard = document.getElementById(`step${i}`);
+                if (i < currentStep) {
+                    // Completed step
+                    stepCard.classList.remove('bg-gray-50', 'border-gray-200');
+                    stepCard.classList.add('bg-green-50', 'border-green-200');
+                    stepCard.querySelector('.w-12').classList.remove('bg-gray-100');
+                    stepCard.querySelector('.w-12').classList.add('bg-green-100');
+                    stepCard.querySelector('i').classList.remove('text-gray-400');
+                    stepCard.querySelector('i').classList.add('text-green-600');
+                    stepCard.querySelector('p.font-medium').classList.remove('text-gray-600');
+                    stepCard.querySelector('p.font-medium').classList.add('text-green-800');
+                    stepCard.querySelector('p.text-xs').classList.remove('text-gray-500');
+                    stepCard.querySelector('p.text-xs').classList.add('text-green-600');
+                } else if (i === currentStep) {
+                    // Current step
+                    stepCard.classList.remove('bg-gray-50', 'border-gray-200');
+                    stepCard.classList.add('bg-blue-50', 'border-blue-200');
+                    stepCard.querySelector('.w-12').classList.remove('bg-gray-100');
+                    stepCard.querySelector('.w-12').classList.add('bg-blue-100');
+                    stepCard.querySelector('i').classList.remove('text-gray-400');
+                    stepCard.querySelector('i').classList.add('text-blue-600');
+                    stepCard.querySelector('p.font-medium').classList.remove('text-gray-600');
+                    stepCard.querySelector('p.font-medium').classList.add('text-blue-800');
+                    stepCard.querySelector('p.text-xs').classList.remove('text-gray-500');
+                    stepCard.querySelector('p.text-xs').classList.add('text-blue-600');
+                } else {
+                    // Future step
+                    stepCard.classList.remove('bg-green-50', 'border-green-200', 'bg-blue-50', 'border-blue-200');
+                    stepCard.classList.add('bg-gray-50', 'border-gray-200');
+                    stepCard.querySelector('.w-12').classList.remove('bg-green-100', 'bg-blue-100');
+                    stepCard.querySelector('.w-12').classList.add('bg-gray-100');
+                    stepCard.querySelector('i').classList.remove('text-green-600', 'text-blue-600');
+                    stepCard.querySelector('i').classList.add('text-gray-400');
+                    stepCard.querySelector('p.font-medium').classList.remove('text-green-800', 'text-blue-800');
+                    stepCard.querySelector('p.font-medium').classList.add('text-gray-600');
+                    stepCard.querySelector('p.text-xs').classList.remove('text-green-600', 'text-blue-600');
+                    stepCard.querySelector('p.text-xs').classList.add('text-gray-500');
+                }
+            }
+            
+            // Update progress bar
+            const progressPercent = ((currentStep - 1) / 3) * 100;
+            document.getElementById('progressBar').style.width = `${progressPercent}%`;
+            document.getElementById('progressText').textContent = `${currentStep}/4 Langkah`;
+            
+            // Show/hide step content
+            for (let i = 1; i <= 4; i++) {
+                const stepContent = document.getElementById(`step${i}Content`);
+                if (i === currentStep) {
+                    stepContent.classList.remove('hidden');
+                } else {
+                    stepContent.classList.add('hidden');
+                }
+            }
+        }
+        
+        // Go to step 2
+        function goToStep2() {
+            if (!selectedEmployee) {
+                alert('Pilih karyawan terlebih dahulu');
+                return;
+            }
+            
+            // Check if employee already has face registered
+            if (selectedEmployee.hasFace) {
+                if (!confirm('Karyawan ini sudah memiliki wajah terdaftar. Apakah Anda ingin memperbarui data wajah?')) {
+                    return;
+                }
+            }
+            
+            currentStep = 2;
+            updateProgress();
+            
+            // Clear previous captures
+            capturedImages = [];
+            updateCapturePreviews();
+            
+            // Enable/disable buttons
+            document.getElementById('nextToStep3').disabled = true;
+        }
+        
+        // Go to step 3
+        function goToStep3() {
+            if (capturedImages.length === 0) {
+                alert('Ambil minimal 1 gambar terlebih dahulu');
+                return;
+            }
+            
+            currentStep = 3;
+            updateProgress();
+            
+            // Run validation
+            validateCaptures();
+            
+            // Enable/disable buttons
+            document.getElementById('nextToStep4').disabled = false;
+        }
+        
+        // Go to step 4
+        function goToStep4() {
+            currentStep = 4;
+            updateProgress();
+            
+            // Update save info
+            document.getElementById('saveImageCount').textContent = capturedImages.length;
+        }
+        
+        // Go back to step 1
+        function goToStep1() {
+            currentStep = 1;
+            updateProgress();
+            stopCamera();
+        }
+        
+        // Go back to step 2
+        function goBackToStep2() {
+            currentStep = 2;
+            updateProgress();
+        }
+        
+        // Go back to step 3
+        function goBackToStep3() {
+            currentStep = 3;
+            updateProgress();
+        }
+        
+        // Start camera
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = videoStream;
+                currentStream = videoStream;
+                
+                // Update UI
+                startCameraBtn.disabled = true;
+                captureBtn.disabled = false;
+                document.getElementById('cameraStatus').innerHTML = 
+                    '<i class="fas fa-video text-green-500 mr-2"></i><span class="text-sm text-green-600">Kamera: Aktif</span>';
+                
+                // Start quality monitoring
+                startQualityMonitoring();
+                
+            } catch (error) {
+                console.error('Camera Error:', error);
+                alert('Gagal mengakses kamera: ' + error.message);
+            }
+        }
+        
+        // Stop camera
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                videoStream = null;
+                currentStream = null;
+                
+                // Update UI
+                startCameraBtn.disabled = false;
+                captureBtn.disabled = true;
+                document.getElementById('cameraStatus').innerHTML = 
+                    '<i class="fas fa-video text-gray-400 mr-2"></i><span class="text-sm text-gray-600">Kamera: Off</span>';
+                
+                // Hide quality indicators
+                qualityIndicators.classList.add('hidden');
+            }
+        }
+        
+        // Switch camera
+        async function switchCamera() {
+            if (!videoStream) {
+                alert('Nyalakan kamera terlebih dahulu');
+                return;
+            }
+            
+            // Stop current stream
+            videoStream.getTracks().forEach(track => track.stop());
+            
+            // Switch facing mode
+            facingMode = facingMode === 'user' ? 'environment' : 'user';
+            
+            // Start new stream
+            await startCamera();
+        }
+        
+        // Start quality monitoring
+        function startQualityMonitoring() {
+            qualityIndicators.classList.remove('hidden');
+            
+            // Simulate quality monitoring
+            setInterval(() => {
+                if (videoStream) {
+                    const brightness = Math.floor(Math.random() * 30) + 70;
+                    const sharpness = Math.floor(Math.random() * 25) + 75;
+                    const position = Math.floor(Math.random() * 20) + 80;
+                    
+                    document.getElementById('brightnessScore').textContent = `${brightness}%`;
+                    document.getElementById('sharpnessScore').textContent = `${sharpness}%`;
+                    document.getElementById('positionScore').textContent = `${position}%`;
+                    
+                    const avgQuality = Math.round((brightness + sharpness + position) / 3);
+                    document.getElementById('qualityScore').textContent = `${avgQuality}%`;
+                    
+                    // Update color based on quality
+                    if (avgQuality >= 80) {
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-green-100 text-green-800 rounded text-sm';
+                    } else if (avgQuality >= 60) {
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-sm';
+                    } else {
+                        document.getElementById('qualityScore').className = 'ml-2 px-2 py-1 bg-red-100 text-red-800 rounded text-sm';
+                    }
+                }
+            }, 1000);
+        }
+        
+        // Capture face
+        async function captureFace() {
+            if (!videoStream) {
+                alert('Nyalakan kamera terlebih dahulu');
+                return;
+            }
+            
+            // Show capture indicator
+            captureIndicator.classList.remove('hidden');
+            
+            setTimeout(() => {
+                try {
+                    // Capture frame from video
+                    const context = canvas.getContext('2d');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert canvas to data URL
+                    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                    
+                    // Add to captured images
+                    capturedImages.push({
+                        id: Date.now(),
+                        data: imageData,
+                        quality: Math.floor(Math.random() * 30) + 70, // Simulated quality score
+                        timestamp: new Date().toLocaleTimeString('id-ID')
+                    });
+                    
+                    // Update previews
+                    updateCapturePreviews();
+                    
+                    // Hide capture indicator
+                    captureIndicator.classList.add('hidden');
+                    
+                    // Enable next button if we have at least 3 images
+                    if (capturedImages.length >= 3) {
+                        document.getElementById('nextToStep3').disabled = false;
+                    }
+                    
+                    // Show success message
+                    showCaptureSuccess();
+                    
+                } catch (error) {
+                    console.error('Capture Error:', error);
+                    captureIndicator.classList.add('hidden');
+                    alert('Gagal mengambil gambar: ' + error.message);
+                }
+            }, 1500); // Simulate processing time
+        }
+        
+        // Show capture success
+        function showCaptureSuccess() {
+            const successMsg = document.createElement('div');
+            successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg z-50';
+            successMsg.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span>Gambar berhasil ditambahkan (${capturedImages.length}/3)</span>
+                </div>
+            `;
+            
+            document.body.appendChild(successMsg);
+            
+            setTimeout(() => {
+                successMsg.remove();
+            }, 3000);
+        }
+        
+        // Update capture previews
+        function updateCapturePreviews() {
+            const container = document.getElementById('capturePreviews');
+            
+            if (capturedImages.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 col-span-2 md:col-span-4">
+                        <i class="fas fa-images text-gray-300 text-3xl mb-3"></i>
+                        <p class="text-sm text-gray-500">Belum ada gambar</p>
+                    </div>
+                `;
+                return;
+            }
             
             let html = '';
-            
-            employees.forEach(employee => {
-                const joinDate = new Date(employee.dibuat);
-                const formattedDate = joinDate.toLocaleDateString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                });
-                
+            capturedImages.forEach((image, index) => {
                 html += `
-                    <tr class="hover:bg-gray-50">
-                        <td class="py-4 px-6">
-                            <span class="font-mono text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                                ${employee.kode}
-                            </span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <div class="font-medium text-gray-900">${employee.nama}</div>
-                            <div class="text-xs text-gray-500">ID: ${employee.id}</div>
-                        </td>
-                        <td class="py-4 px-6">${employee.email || '-'}</td>
-                        <td class="py-4 px-6">
-                            <span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded">
-                                ${employee.shift_id || '-'}
-                            </span>
-                        </td>
-                        <td class="py-4 px-6">
-                            <span class="px-3 py-1 rounded-full text-xs font-medium ${employee.face_registered ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                                <i class="fas ${employee.face_registered ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i>
-                                ${employee.face_registered ? 'Sudah' : 'Belum'}
-                            </span>
-                        </td>
-                        <td class="py-4 px-6 text-sm text-gray-600">
-                            ${formattedDate}
-                        </td>
-                        <td class="py-4 px-6">
-                            <button onclick="registerFace(${employee.id})" 
-                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition duration-300">
-                                <i class="fas fa-camera mr-2"></i>Registrasi Wajah
-                            </button>
-                        </td>
-                    </tr>
+                    <div class="capture-preview relative border border-gray-200 rounded-lg overflow-hidden">
+                        <img src="${image.data}" class="w-full h-32 object-cover">
+                        <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
+                            <div class="flex justify-between items-center">
+                                <span>#${index + 1}</span>
+                                <span>${image.quality}%</span>
+                            </div>
+                        </div>
+                        <button onclick="removeCapture(${image.id})" 
+                                class="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 `;
             });
             
-            tbody.innerHTML = html;
-            countEl.textContent = employees.length;
-        }
-
-        // Filter and sort employees
-        function filterEmployees() {
-            if (!window.employeesData) return;
-            
-            const searchTerm = document.getElementById('searchEmployee').value.toLowerCase();
-            const filterStatus = document.getElementById('filterStatus').value;
-            const sortBy = document.getElementById('sortBy').value;
-            
-            let filtered = window.employeesData.filter(employee => {
-                // Search filter
-                const matchesSearch = 
-                    employee.nama.toLowerCase().includes(searchTerm) ||
-                    employee.kode.toLowerCase().includes(searchTerm) ||
-                    (employee.email && employee.email.toLowerCase().includes(searchTerm));
-                
-                // Status filter
-                let matchesStatus = true;
-                if (filterStatus === 'registered') {
-                    matchesStatus = employee.face_registered;
-                } else if (filterStatus === 'not_registered') {
-                    matchesStatus = !employee.face_registered;
-                }
-                
-                return matchesSearch && matchesStatus;
-            });
-            
-            // Sort filtered results
-            filtered.sort((a, b) => {
-                switch (sortBy) {
-                    case 'name_desc':
-                        return b.nama.localeCompare(a.nama);
-                    case 'code':
-                        return a.kode.localeCompare(b.kode);
-                    case 'date':
-                        return new Date(b.dibuat) - new Date(a.dibuat);
-                    default: // 'name'
-                        return a.nama.localeCompare(b.nama);
-                }
-            });
-            
-            renderEmployees(filtered);
-        }
-
-        // Open registration page for specific employee
-        function registerFace(employeeId) {
-            window.open(`/register-face?employee_id=${employeeId}`, '_blank');
-        }
-
-        // Refresh employee list
-        function refreshEmployeeList() {
-            const refreshBtn = event?.target?.closest('button');
-            if (refreshBtn) {
-                refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            // Add placeholder for next capture if less than 4
+            if (capturedImages.length < 4) {
+                html += `
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center p-4 hover:border-blue-500 cursor-pointer"
+                         onclick="captureFace()">
+                        <i class="fas fa-plus text-gray-400 text-2xl mb-2"></i>
+                        <p class="text-sm text-gray-500">Tambah Gambar</p>
+                    </div>
+                `;
             }
             
-            loadEmployees();
+            container.innerHTML = html;
+        }
+        
+        // Remove capture
+        function removeCapture(imageId) {
+            capturedImages = capturedImages.filter(img => img.id !== imageId);
+            updateCapturePreviews();
             
-            if (refreshBtn) {
+            // Disable next button if less than 3 images
+            if (capturedImages.length < 3) {
+                document.getElementById('nextToStep3').disabled = true;
+            }
+        }
+        
+        // Validate captures
+        function validateCaptures() {
+            const container = document.getElementById('validationResults');
+            
+            // Simulate validation process
+            setTimeout(() => {
+                let html = '';
+                let allValid = true;
+                
+                capturedImages.forEach((image, index) => {
+                    const isValid = image.quality >= 70;
+                    if (!isValid) allValid = false;
+                    
+                    html += `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 ${isValid ? 'bg-green-100' : 'bg-red-100'} rounded-lg flex items-center justify-center mr-3">
+                                    <i class="fas fa-${isValid ? 'check' : 'times'} text-${isValid ? 'green' : 'red'}-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium">Gambar #${index + 1}</p>
+                                    <p class="text-sm text-gray-600">Kualitas: ${image.quality}%</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="px-3 py-1 ${isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm">
+                                    ${isValid ? 'Valid' : 'Tidak Valid'}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Add summary
+                html += `
+                    <div class="mt-6 p-4 ${allValid ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'} rounded-lg">
+                        <div class="flex items-center">
+                            <i class="fas fa-${allValid ? 'check-circle' : 'exclamation-triangle'} ${allValid ? 'text-green-600' : 'text-yellow-600'} mr-3 text-xl"></i>
+                            <div>
+                                <p class="font-medium ${allValid ? 'text-green-800' : 'text-yellow-800'}">
+                                    ${allValid ? 'Semua gambar valid!' : 'Beberapa gambar perlu diperbaiki'}
+                                </p>
+                                <p class="text-sm ${allValid ? 'text-green-700' : 'text-yellow-700'} mt-1">
+                                    ${allValid ? 
+                                        'Gambar dapat digunakan untuk registrasi wajah.' : 
+                                        'Disarankan mengambil ulang gambar dengan kualitas rendah.'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                container.innerHTML = html;
+                
+                // Update validation status for step 4
+                const statusEl = document.getElementById('saveValidationStatus');
+                statusEl.textContent = allValid ? 'Valid' : 'Perlu Perbaikan';
+                statusEl.className = allValid ? 
+                    'px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm' : 
+                    'px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm';
+                    
+            }, 1000);
+        }
+        
+        // Save to database
+        async function saveToDatabase() {
+            if (!selectedEmployee || capturedImages.length === 0) {
+                alert('Data tidak lengkap');
+                return;
+            }
+            
+            // Show progress
+            document.getElementById('saveContent').classList.add('hidden');
+            document.getElementById('saveProgress').classList.remove('hidden');
+            
+            // Simulate progress updates
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                if (progress > 100) progress = 100;
+                
+                document.getElementById('saveProgressBar').style.width = `${progress}%`;
+                document.getElementById('saveProgressText').textContent = getProgressText(progress);
+                
+                if (progress === 100) {
+                    clearInterval(progressInterval);
+                    completeRegistration();
+                }
+            }, 200);
+        }
+        
+        // Get progress text
+        function getProgressText(progress) {
+            if (progress < 30) return 'Mempersiapkan data...';
+            if (progress < 60) return 'Memproses gambar wajah...';
+            if (progress < 90) return 'Menyimpan encoding wajah...';
+            return 'Menyelesaikan proses...';
+        }
+        
+        // Complete registration
+        async function completeRegistration() {
+            try {
+                // Simulate API call
                 setTimeout(() => {
-                    refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+                    // Show success
+                    document.getElementById('saveProgress').classList.add('hidden');
+                    document.getElementById('saveSuccess').classList.remove('hidden');
+                    
+                    // Update success info
+                    document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
+                    document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
+                    document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
+                    document.getElementById('saveSuccessMessage').textContent = 
+                        `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${capturedImages.length} gambar.`;
+                    
+                    // Update buttons
+                    document.getElementById('saveBtn').classList.add('hidden');
+                    document.getElementById('backToStep3Btn').classList.add('hidden');
+                    document.getElementById('newRegistrationBtn').classList.remove('hidden');
+                    
+                    // Update cache count
+                    loadCacheCount();
+                    loadRecentRegistrations();
+                    
                 }, 1000);
+                
+            } catch (error) {
+                console.error('Registration Error:', error);
+                showSaveError('Gagal menyimpan data: ' + error.message);
             }
         }
+        
+        // Show save error
+        function showSaveError(message) {
+            document.getElementById('saveProgress').classList.add('hidden');
+            document.getElementById('saveError').classList.remove('hidden');
+            document.getElementById('saveErrorMessage').textContent = message;
+            document.getElementById('errorDetails').textContent = 'Silakan coba lagi atau hubungi administrator.';
+        }
+        
+        // Retry save
+        function retrySave() {
+            document.getElementById('saveError').classList.add('hidden');
+            document.getElementById('saveContent').classList.remove('hidden');
+        }
+        
+        // Start new registration
+        function startNewRegistration() {
+            // Reset everything
+            selectedEmployee = null;
+            capturedImages = [];
+            currentStep = 1;
+            
+            // Update UI
+            updateProgress();
+            updateCapturePreviews();
+            document.getElementById('selectedEmployeeInfo').classList.remove('hidden');
+            document.getElementById('employeeDetails').classList.add('hidden');
+            document.getElementById('saveSuccess').classList.add('hidden');
+            document.getElementById('saveContent').classList.remove('hidden');
+            document.getElementById('saveBtn').classList.remove('hidden');
+            document.getElementById('backToStep3Btn').classList.remove('hidden');
+            document.getElementById('newRegistrationBtn').classList.add('hidden');
+            
+            // Stop camera
+            stopCamera();
+            
+            // Reload employees
+            loadEmployees();
+        }
+        
+        // Load cache count
+        async function loadCacheCount() {
+            try {
+                // Simulate API call
+                const count = Math.floor(Math.random() * 50) + 20;
+                document.getElementById('cacheCount').textContent = count;
+                document.getElementById('systemCacheCount').textContent = count;
+            } catch (error) {
+                console.error('Error loading cache count:', error);
+            }
+        }
+        
+        // Load recent registrations
+        async function loadRecentRegistrations() {
+            try {
+                // Simulate API call
+                const registrations = [
+                    { name: 'Budi Santoso', time: '10:30', images: 3 },
+                    { name: 'Siti Rahayu', time: '09:45', images: 4 },
+                    { name: 'Ahmad Fauzi', time: '08:15', images: 3 },
+                    { name: 'Dewi Anggraini', time: 'Yesterday', images: 4 }
+                ];
+                
+                const container = document.getElementById('recentRegistrations');
+                let html = '';
+                
+                registrations.forEach(reg => {
+                    html += `
+                        <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-user text-blue-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-medium text-gray-800 truncate">${reg.name}</p>
+                                <div class="flex items-center text-xs text-gray-500 mt-1">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>${reg.time}</span>
+                                    <i class="fas fa-image ml-3 mr-1"></i>
+                                    <span>${reg.images} gambar</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading recent registrations:', error);
+            }
+        }
+        
+        // Handle page visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden && videoStream) {
+                // Page is hidden, stop camera to save resources
+                stopCamera();
+            }
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            // Update UI if needed
+        });
     </script>
 </body>
 </html>
