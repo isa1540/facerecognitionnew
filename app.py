@@ -354,9 +354,26 @@ def register_face_json(employee_id):
         import numpy as np
         
         data = request.json
-        images = data.get('images', [])
         
-        if not images or len(images) < 3:
+        # DEBUG: Log request
+        print(f"📥 Received request for employee {employee_id}")
+        print(f"📦 Data keys: {data.keys() if data else 'None'}")
+        
+        if not data:
+            print("❌ No data received")
+            return jsonify({"error": "No data received"}), 400
+        
+        images = data.get('images', [])
+        print(f"📸 Images count: {len(images)}")
+        
+        if not images:
+            print("❌ No images in request")
+            return jsonify({
+                "error": "Tidak ada gambar yang dikirim"
+            }), 400
+        
+        if len(images) < 3:
+            print(f"❌ Only {len(images)} images, need at least 3")
             return jsonify({
                 "error": f"Minimal 3 gambar diperlukan. Dikirim: {len(images)}"
             }), 400
@@ -364,30 +381,37 @@ def register_face_json(employee_id):
         # Get employee
         employee = Employee.query.get(employee_id)
         if not employee:
+            print(f"❌ Employee {employee_id} not found")
             return jsonify({"error": "Karyawan tidak ditemukan"}), 404
+        
+        print(f"✅ Employee found: {employee.nama} (ID: {employee.id})")
         
         # Get face engine
         from face_engine import get_face_engine
         engine = get_face_engine()
         
         if engine is None:
+            print("❌ Face engine not available")
             return jsonify({"error": "Face engine not available"}), 500
         
         valid_encodings = []
         
         for idx, img_data in enumerate(images):
             try:
+                # Check if it's a data URL
                 if img_data.startswith('data:image'):
                     img_data = img_data.split(',')[1]
                 
+                # Decode base64
                 img_bytes = base64.b64decode(img_data)
+                print(f"📸 Image {idx+1}: Decoded {len(img_bytes)} bytes")
                 
                 # Try to extract encoding
                 encoding = engine.extract_face_encoding(img_bytes)
                 
                 if encoding is not None:
                     valid_encodings.append(encoding)
-                    print(f"✅ Image {idx+1}: Face encoded")
+                    print(f"✅ Image {idx+1}: Face encoded successfully")
                 else:
                     print(f"⚠️ Image {idx+1}: No face detected")
                     
@@ -396,12 +420,14 @@ def register_face_json(employee_id):
                 continue
         
         if len(valid_encodings) < 3:
+            print(f"❌ Only {len(valid_encodings)} valid faces, need at least 3")
             return jsonify({
-                "error": f"Hanya {len(valid_encodings)} wajah valid. Minimal 3 diperlukan."
+                "error": f"Hanya {len(valid_encodings)} wajah valid dari {len(images)} gambar. Minimal 3 diperlukan."
             }), 400
         
         # Use average encoding
         avg_encoding = np.mean(valid_encodings, axis=0).tolist()
+        print(f"✅ Created average encoding from {len(valid_encodings)} faces")
         
         # Save to database
         FaceEncoding.query.filter_by(employee_id=employee_id).delete()
@@ -412,9 +438,11 @@ def register_face_json(employee_id):
         )
         db.session.add(face_encoding)
         db.session.commit()
+        print(f"💾 Saved face encoding to database for employee {employee_id}")
         
         # Add to engine cache
         engine.add_face_encoding(employee_id, avg_encoding)
+        print(f"💾 Added face encoding to cache for employee {employee_id}")
         
         return jsonify({
             "message": f"Wajah berhasil diregistrasi dengan {len(valid_encodings)} gambar",

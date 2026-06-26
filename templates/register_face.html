@@ -1062,65 +1062,97 @@
         // SAVE TO DATABASE
         // ===============================
         async function saveToDatabase() {
-            if (!selectedEmployee || capturedImages.length === 0) {
-                return alert('Data tidak lengkap');
-            }
-            
-            document.getElementById('saveContent').classList.add('hidden');
-            document.getElementById('saveProgress').classList.remove('hidden');
-            
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 10;
-                if (progress > 100) progress = 100;
-                document.getElementById('saveProgressBar').style.width = `${progress}%`;
-                document.getElementById('saveProgressText').textContent = 
-                    progress < 30 ? 'Mempersiapkan data...' :
-                    progress < 60 ? 'Memproses gambar...' :
-                    progress < 90 ? 'Menyimpan encoding...' :
-                    'Menyelesaikan...';
-                
-                if (progress === 100) {
-                    clearInterval(interval);
-                    completeRegistration();
-                }
-            }, 200);
+        if (!selectedEmployee || capturedImages.length === 0) {
+            return alert('Data tidak lengkap');
         }
+        
+        // Validasi: pastikan semua gambar valid
+        const invalidImages = capturedImages.filter(img => img.quality < 70);
+        if (invalidImages.length > 0) {
+            if (!confirm(`Ada ${invalidImages.length} gambar dengan kualitas di bawah 70%. Lanjutkan?`)) {
+                return;
+            }
+        }
+        
+        // Validasi: pastikan minimal 3 gambar
+        if (capturedImages.length < 3) {
+            return alert(`Minimal 3 gambar diperlukan. Saat ini: ${capturedImages.length}`);
+        }
+        
+        document.getElementById('saveContent').classList.add('hidden');
+        document.getElementById('saveProgress').classList.remove('hidden');
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            if (progress > 100) progress = 100;
+            document.getElementById('saveProgressBar').style.width = `${progress}%`;
+            document.getElementById('saveProgressText').textContent = 
+                progress < 30 ? 'Mempersiapkan data...' :
+                progress < 60 ? 'Memproses gambar...' :
+                progress < 90 ? 'Menyimpan encoding...' :
+                'Menyelesaikan...';
+            
+            if (progress === 100) {
+                clearInterval(interval);
+                completeRegistration();
+            }
+        }, 200);
+    }
 
         async function completeRegistration() {
-            try {
-                const imageData = capturedImages.map(img => img.data);
-                
-                const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ images: imageData })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.message) {
-                    document.getElementById('saveProgress').classList.add('hidden');
-                    document.getElementById('saveSuccess').classList.remove('hidden');
-                    
-                    document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
-                    document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
-                    document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
-                    document.getElementById('saveSuccessMessage').textContent = 
-                        `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${capturedImages.length} gambar.`;
-                    
-                    document.getElementById('saveBtn').style.display = 'none';
-                    document.getElementById('backToStep3Btn').style.display = 'none';
-                    
-                    loadCacheCount();
-                    loadRecentRegistrations();
-                    showToast('success', 'Registrasi berhasil!');
-                } else {
-                    showSaveError(result.error || 'Gagal menyimpan data');
-                }
-            } catch (error) {
-                showSaveError('Error: ' + error.message);
-            }
+        try {
+        // Prepare image data
+        const imageData = capturedImages.map(img => img.data);
+        
+        // DEBUG: Log data yang dikirim
+        console.log('Sending to server:', {
+            employee_id: selectedEmployee.id,
+            images_count: imageData.length,
+            first_image_preview: imageData[0]?.substring(0, 100) + '...'
+        });
+        
+        const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                images: imageData
+            })
+        });
+        
+        // DEBUG: Log response
+        console.log('Response status:', response.status);
+        
+        const result = await response.json();
+        console.log('Response data:', result);
+        
+        if (response.ok && result.message) {
+            // Success
+            document.getElementById('saveProgress').classList.add('hidden');
+            document.getElementById('saveSuccess').classList.remove('hidden');
+            
+            document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
+            document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
+            document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
+            document.getElementById('saveSuccessMessage').textContent = 
+                `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${capturedImages.length} gambar.`;
+            
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('backToStep3Btn').style.display = 'none';
+            
+            loadCacheCount();
+            loadRecentRegistrations();
+            showToast('success', 'Registrasi berhasil!');
+        } else {
+            showSaveError(result.error || 'Gagal menyimpan data');
+        }
+        
+        } catch (error) {
+        console.error('Registration Error:', error);
+        showSaveError('Error: ' + error.message);
+        }
         }
 
         function showSaveError(msg) {
