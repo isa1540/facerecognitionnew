@@ -1141,13 +1141,13 @@
             if (!currentEditingEmployeeId) return;
             
             // Redirect ke halaman registrasi wajah dengan ID karyawan
-            window.location.href = `/register-face-general?employee_id=${currentEditingEmployeeId}`;
+            window.location.href = `/register-face?employee_id=${currentEditingEmployeeId}`;
         }
 
         // Fungsi registrasi wajah langsung
         function registerFace(employeeId) {
             // Buka halaman registrasi wajah umum
-            window.location.href = `/register-face-general?employee_id=${employeeId}`;
+            window.location.href = `/register-face?employee_id=${employeeId}`;
         }
 
         // Helper functions
