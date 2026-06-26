@@ -239,34 +239,8 @@
             }
         });
 
-        // Form submission with validation
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const loginBtn = document.getElementById('loginBtn');
-            const loginText = document.getElementById('loginText');
-            const loadingSpinner = document.getElementById('loadingSpinner');
-            
-            // Validation
-            if (!email.includes('@') || !email.includes('.')) {
-                showAlert('Email tidak valid', 'error');
-                return;
-            }
-            
-            if (password.length < 8) {
-                showAlert('Password minimal 8 karakter', 'error');
-                return;
-            }
-            
-            // Show loading state
-            loginBtn.disabled = true;
-            loginText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...';
-            
-            // Submit form
-            this.submit();
-        });
+
+
 
         // Function to show alert
         function showAlert(message, type = 'info') {

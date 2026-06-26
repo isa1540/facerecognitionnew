@@ -103,7 +103,7 @@ def register():
 
 @app.route("/auth/login", methods=["POST"])
 def login_api():
-    data = request.get_json() or request.form
+    data = request.get_json(silent=True) or request.form  # ✅ FIX
 
     if not data:
         return {"error": "Invalid payload"}, 400
