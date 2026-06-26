@@ -11,18 +11,17 @@ class Config:
     @classmethod
     def build_database_uri(cls):
         database_url = (
-            os.getenv("DATABASE_URL")
-            or os.getenv("MYSQL_PUBLIC_URL")
-        )
+        os.getenv("DATABASE_URL")
+        or os.getenv("MYSQL_URL")
+        or os.getenv("MYSQL_PUBLIC_URL")
+    )
 
-        if database_url:
-            return database_url.replace(
-                "mysql://",
-                "mysql+mysqlconnector://",
-                1
-            )
+    if database_url:
+        if database_url.startswith("mysql://"):
+            return database_url.replace("mysql://", "mysql+mysqlconnector://", 1)
+        return database_url
 
-        return "sqlite:///attendance.db"
+    raise Exception("DATABASE_URL not found")
 
     @staticmethod
     def init_app(app):
