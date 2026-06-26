@@ -578,3 +578,83 @@ def register_face_page():
 # ===============================
 if __name__ == "__main__":
     app.run(debug=True)
+
+# ===============================
+# SEED DATA (Auto-run jika kosong)
+# ===============================
+def seed_employees():
+    """Seed initial employee data if table is empty"""
+    if Employee.query.count() == 0:
+        print("📦 Seeding initial employee data...")
+        
+        employees = [
+            Employee(
+                kode="EMP001",
+                nama="Budi Santoso",
+                email="budi.santoso@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP002",
+                nama="Siti Rahayu",
+                email="siti.rahayu@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP003",
+                nama="Ahmad Fauzi",
+                email="ahmad.fauzi@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP004",
+                nama="Dewi Anggraini",
+                email="dewi.anggraini@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP005",
+                nama="Rudi Hermawan",
+                email="rudi.hermawan@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP006",
+                nama="Maya Sari",
+                email="maya.sari@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP007",
+                nama="Andi Wijaya",
+                email="andi.wijaya@company.com",
+                shift_id=None,
+                aktif=True
+            ),
+            Employee(
+                kode="EMP008",
+                nama="Nina Kurniawati",
+                email="nina.kurniawati@company.com",
+                shift_id=None,
+                aktif=True
+            )
+        ]
+        
+        for emp in employees:
+            db.session.add(emp)
+        
+        db.session.commit()
+        print(f"✅ {len(employees)} employees seeded successfully!")
+    else:
+        print(f"✅ Employees already exist: {Employee.query.count()} records")
+
+# Panggil fungsi setelah db.init_app
+with app.app_context():
+    db.create_all()
+    seed_employees()  # <-- Tambahkan ini
