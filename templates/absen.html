@@ -533,6 +533,88 @@
         </div>
     </div>
 
+<!-- Modal Pengajuan Izin -->
+<div id="leaveModal"
+     class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold">
+                Pengajuan Izin / Cuti
+            </h2>
+
+            <button onclick="closeLeaveModal()"
+                class="text-gray-500 text-2xl">
+                &times;
+            </button>
+        </div>
+
+        <div class="space-y-4">
+
+            <select id="leaveJenis"
+                class="w-full border rounded-lg p-2">
+
+                <option value="IZIN">Izin</option>
+                <option value="CUTI">Cuti</option>
+
+            </select>
+
+            <select id="leaveEmployee"
+                class="w-full border rounded-lg p-2">
+
+                <option value="">Pilih Karyawan</option>
+
+            </select>
+
+            <input
+                id="leaveMulai"
+                type="date"
+                class="w-full border rounded-lg p-2">
+
+            <input
+                id="leaveSelesai"
+                type="date"
+                class="w-full border rounded-lg p-2">
+
+            <textarea
+                id="leaveAlasan"
+                rows="4"
+                class="w-full border rounded-lg p-2"
+                placeholder="Masukkan alasan izin..."></textarea>
+
+            <input
+                id="leaveBukti"
+                type="file"
+                accept="image/*,.pdf"
+                class="w-full">
+
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+
+            <button
+                onclick="closeLeaveModal()"
+                class="px-4 py-2 bg-gray-300 rounded">
+
+                Batal
+
+            </button>
+
+            <button
+                onclick="submitLeave()"
+                class="px-4 py-2 bg-blue-600 text-white rounded">
+
+                Kirim
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
     <!-- GPS Warning Modal -->
     <div id="gpsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
@@ -1309,6 +1391,54 @@ window.addEventListener('beforeunload', function() {
 window.addEventListener('popstate', function() {
     stopCamera();
 });
+
+function openLeaveModal() {
+
+    document
+        .getElementById("leaveModal")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("leaveModal")
+        .classList.add("flex");
+
+}
+
+function closeLeaveModal() {
+
+    document
+        .getElementById("leaveModal")
+        .classList.remove("flex");
+
+    document
+        .getElementById("leaveModal")
+        .classList.add("hidden");
+
+}
+loadEmployees();
+
+async function loadEmployees(){
+
+    const response = await fetch("/api/karyawan");
+
+    const result = await response.json();
+
+    const select =
+        document.getElementById("leaveEmployee");
+
+    select.innerHTML =
+        `<option value="">Pilih Karyawan</option>`;
+
+    result.data.forEach(emp=>{
+
+        select.innerHTML +=
+        `<option value="${emp.id}">
+            ${emp.nama}
+        </option>`;
+
+    });
+
+}
     </script>
 </body>
 </html>
