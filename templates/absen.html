@@ -1439,6 +1439,30 @@ async function loadEmployees(){
     });
 
 }
-    </script>
+async function submitLeave() {
+    const formData = new FormData();
+
+    formData.append("employee_id", document.getElementById("leaveEmployee").value);
+    formData.append("jenis", document.getElementById("leaveJenis").value);
+    formData.append("tanggal_mulai", document.getElementById("leaveMulai").value);
+    formData.append("tanggal_selesai", document.getElementById("leaveSelesai").value);
+    formData.append("alasan", document.getElementById("leaveAlasan").value);
+
+    const bukti = document.getElementById("leaveBukti").files[0];
+    if (bukti) formData.append("bukti", bukti);
+
+    const response = await fetch("/api/leave", {
+        method: "POST",
+        body: formData
+    });
+
+    const result = await response.json();
+    alert(result.message || result.error || "Selesai");
+
+    if (result.success) {
+        closeLeaveModal();
+    }
+}
+</script>
 </body>
 </html>
