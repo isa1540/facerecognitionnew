@@ -563,11 +563,7 @@ def attendance():
         engine = get_face_engine_safe()
         print(engine.get_stats())
         result = engine.process_attendance(img)
-
-        ...
-        ...
-        ...
-
+        
         db.session.commit()
 
         return jsonify(result)
