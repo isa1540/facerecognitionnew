@@ -870,6 +870,15 @@ def api_late_today():
             'success': False,
             'message': str(e)
         }), 500
+
+@app.route("/debug/encodings")
+def debug_encodings():
+    data = FaceEncoding.query.all()
+
+    return {
+        "count": len(data),
+        "employees": [d.employee_id for d in data]
+    }
 # ===============================
 # LOCAL ONLY
 # ===============================
