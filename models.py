@@ -62,11 +62,27 @@ class LeaveRequest(db.Model):
     __table_args__ = (
         db.Index('idx_leave_tanggal', 'tanggal_mulai', 'tanggal_selesai'),
     )
+
     id = db.Column(db.Integer, primary_key=True)
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=False)
+
+    # BARU
+    jenis = db.Column(
+        db.Enum("IZIN", "CUTI"),
+        default="IZIN",
+        nullable=False
+    )
+
     alasan = db.Column(db.String(255), nullable=False)
+
     tanggal_mulai = db.Column(db.Date, nullable=False)
     tanggal_selesai = db.Column(db.Date, nullable=False)
+
     bukti_foto = db.Column(db.String(255))
-    status = db.Column(db.Enum('PENDING','DISETUJUI','DITOLAK'), default='PENDING')
+
+    status = db.Column(
+        db.Enum('PENDING','DISETUJUI','DITOLAK'),
+        default='PENDING'
+    )
+
     dibuat = db.Column(db.DateTime, default=datetime.utcnow)
