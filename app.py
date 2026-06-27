@@ -540,46 +540,46 @@ def get_registrations_api():
 # ===============================
 @app.route("/attendance", methods=["POST"])
 def attendance():
-    print("FILES:", request.files.keys())
-    print("FORM :", request.form)
+    try:
 
-    if "file" not in request.files:
-        return {"error": "No image"}, 400
+        image = request.files.get("image") or request.files.get("file")
 
-    import numpy as np
-    import cv2
+        if image is None:
+            return jsonify({"error":"No image"}),400
 
-    image_bytes = request.files["file"].read()
-    engine = get_face_engine_safe()
+        import numpy as np
+        import cv2
 
-    img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
-    result = engine.process_attendance(img)
+        image_bytes = image.read()
 
-    if not result.get("employee_id"):
-        return {"error": "Face not recognized"}, 403
+        img = cv2.imdecode(
+            np.frombuffer(image_bytes,np.uint8),
+            cv2.IMREAD_COLOR
+        )
 
-    today = date.today()
-    now = datetime.utcnow()
+        if img is None:
+            return jsonify({"error":"Image decode failed"}),400
 
-    existing = Attendance.query.filter_by(
-        employee_id=result["employee_id"],
-        tanggal=today
-    ).first()
+        engine = get_face_engine_safe()
 
-    if existing:
-        existing.check_out = now
-    else:
-        db.session.add(Attendance(
-            employee_id=result["employee_id"],
-            tanggal=today,
-            check_in=now,
-            status="HADIR",
-            similarity=result.get("similarity", 0),
-            liveness_ok=result.get("liveness_ok", False)
-        ))
+        result = engine.process_attendance(img)
 
-    db.session.commit()
-    return result
+        ...
+        ...
+        ...
+
+        db.session.commit()
+
+        return jsonify(result)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            "success":False,
+            "error":str(e)
+        }),500
 
 # ===============================
 # LEAVE REQUEST
