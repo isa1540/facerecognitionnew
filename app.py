@@ -541,11 +541,10 @@ def get_registrations_api():
 @app.route("/attendance", methods=["POST"])
 def attendance():
     try:
-
         image = request.files.get("image") or request.files.get("file")
 
         if image is None:
-            return jsonify({"error":"No image"}),400
+            return jsonify({"error": "No image"}), 400
 
         import numpy as np
         import cv2
@@ -553,30 +552,74 @@ def attendance():
         image_bytes = image.read()
 
         img = cv2.imdecode(
-            np.frombuffer(image_bytes,np.uint8),
+            np.frombuffer(image_bytes, np.uint8),
             cv2.IMREAD_COLOR
         )
 
         if img is None:
-            return jsonify({"error":"Image decode failed"}),400
+            return jsonify({"error": "Image decode failed"}), 400
 
         engine = get_face_engine_safe()
-        print(engine.get_stats())
         result = engine.process_attendance(img)
-        
+
+        if not result.get("employee_id"):
+            return jsonify(result), 200
+
+        employee_id = result["employee_id"]
+        today = date.today()
+        now = datetime.now()
+
+        latitude = request.form.get("latitude")
+        longitude = request.form.get("longitude")
+
+        existing = Attendance.query.filter_by(
+            employee_id=employee_id,
+            tanggal=today
+        ).first()
+
+        if existing:
+            existing.check_out = now.time()
+            existing.similarity = result.get("similarity", 0)
+            existing.liveness_ok = result.get("liveness_ok", False)
+
+            if latitude:
+                existing.latitude = float(latitude)
+            if longitude:
+                existing.longitude = float(longitude)
+
+            message = "Check-out berhasil"
+        else:
+            attendance = Attendance(
+                employee_id=employee_id,
+                tanggal=today,
+                check_in=now.time(),
+                status="HADIR",
+                similarity=result.get("similarity", 0),
+                liveness_ok=result.get("liveness_ok", False),
+                latitude=float(latitude) if latitude else None,
+                longitude=float(longitude) if longitude else None
+            )
+
+            db.session.add(attendance)
+            message = "Check-in berhasil"
+
         db.session.commit()
 
-        return jsonify(result)
+        result["success"] = True
+        result["message"] = message
+
+        return jsonify(result), 200
 
     except Exception as e:
+        db.session.rollback()
+
         import traceback
         traceback.print_exc()
 
         return jsonify({
-            "success":False,
-            "error":str(e)
-        }),500
-
+            "success": False,
+            "error": str(e)
+        }), 500
 # ===============================
 # LEAVE REQUEST
 # ===============================
