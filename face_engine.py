@@ -1,11 +1,10 @@
-import cv2
-import numpy as np
-import pickle
 import os
-from datetime import datetime
-from PIL import Image
 import io
 import base64
+import pickle
+import numpy as np
+from datetime import datetime
+from PIL import Image
 
 class FaceEngine:
     """Face recognition engine with fallback for headless environments"""
@@ -111,38 +110,36 @@ class FaceEngine:
     
     def extract_face_encoding(self, image_data):
         """Extract face encoding from various input formats"""
-    try:
+        try:
+            # OpenCV image (numpy array)
+            if isinstance(image_data, np.ndarray):
+                img = Image.fromarray(image_data)
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG")
+                return self.extract_face_encoding_from_bytes(buffer.getvalue())
 
-        # OpenCV image (numpy array)
-        if isinstance(image_data, np.ndarray):
-            img = Image.fromarray(image_data)
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG")
-            return self.extract_face_encoding_from_bytes(buffer.getvalue())
+            # Base64 string
+            elif isinstance(image_data, str):
+                if image_data.startswith("data:image"):
+                    image_data = image_data.split(",")[1]
+                image_bytes = base64.b64decode(image_data)
+                return self.extract_face_encoding_from_bytes(image_bytes)
 
-        # Base64 string
-        elif isinstance(image_data, str):
-            if image_data.startswith("data:image"):
-                image_data = image_data.split(",")[1]
+            # Raw bytes
+            elif isinstance(image_data, bytes):
+                return self.extract_face_encoding_from_bytes(image_data)
 
-            image_bytes = base64.b64decode(image_data)
-            return self.extract_face_encoding_from_bytes(image_bytes)
+            # Already encoding
+            elif isinstance(image_data, list):
+                return image_data
 
-        # Raw bytes
-        elif isinstance(image_data, bytes):
-            return self.extract_face_encoding_from_bytes(image_data)
+            else:
+                print(f"⚠️ Unsupported image type: {type(image_data)}")
+                return None
 
-        # Already encoding
-        elif isinstance(image_data, list):
-            return image_data
-
-        else:
-            print(f"Unsupported image type: {type(image_data)}")
+        except Exception as e:
+            print(f"❌ Error extract_face_encoding: {e}")
             return None
-
-    except Exception as e:
-        print(f"Error extract_face_encoding: {e}")
-        return None
     
     def add_face_encoding(self, employee_id, encoding):
         """Add face encoding to cache"""
