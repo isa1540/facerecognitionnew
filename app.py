@@ -2,7 +2,8 @@
 # RAILWAY + GUNICORN SAFE BOOT
 # ===============================
 import os
-
+os.environ["DISPLAY"] = ":0"
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 # ===============================
 # BASIC IMPORT
