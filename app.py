@@ -741,6 +741,7 @@ def karyawan_page():
     return render_template("karyawan.html")
 
 
+@app.route("/shift")
 @app.route("/shifts")
 def shift_page():
     return render_template("shift.html")
