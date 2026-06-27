@@ -841,13 +841,26 @@
         // ===============================
         async function startCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+                const constraints = {
+                    video: {
+                        facingMode: facingMode,
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
                     audio: false
-                });
+                };
                 
-                videoStream = stream;
-                video.srcObject = stream;
+                videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = videoStream;
+                
+                // Tangani play() dengan promise
+                try {
+                    await video.play();
+                    console.log('Video playback started successfully');
+                } catch (playError) {
+                    console.warn('Play interrupted, but video should work:', playError);
+                    // Video tetap bisa digunakan meskipun ada error play
+                }
                 
                 startCameraBtn.disabled = true;
                 captureBtn.disabled = false;
@@ -855,7 +868,9 @@
                     '<i class="fas fa-video text-green-500 mr-2"></i><span class="text-sm text-green-600">Kamera: Aktif</span>';
                 
                 startQualityMonitoring();
+                
             } catch (error) {
+                console.error('Camera Error:', error);
                 alert('Gagal mengakses kamera: ' + error.message);
             }
         }
@@ -1102,58 +1117,79 @@
 
         async function completeRegistration() {
         try {
-        // Prepare image data
-        const imageData = capturedImages.map(img => img.data);
-        
-        // DEBUG: Log data yang dikirim
-        console.log('Sending to server:', {
-            employee_id: selectedEmployee.id,
-            images_count: imageData.length,
-            first_image_preview: imageData[0]?.substring(0, 100) + '...',
-            image_sizes: imageData.map(img => img.length)
-        });
-        
-        const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                images: imageData
-            })
-        });        
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        
-        const result = await response.json();
-        console.log('Response data:', result);
-        
-        if (response.ok && result.message) {
-            // Success
-            document.getElementById('saveProgress').classList.add('hidden');
-            document.getElementById('saveSuccess').classList.remove('hidden');
+            // Prepare image data
+            const imageData = capturedImages.map(img => img.data);
             
-            document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
-            document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
-            document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
-            document.getElementById('saveSuccessMessage').textContent = 
-                `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${capturedImages.length} gambar.`;
+            // VALIDASI: Cek apakah ada gambar yang kosong
+            const validImages = imageData.filter(img => img && img.length > 100);
+            if (validImages.length < 3) {
+                showSaveError(`Hanya ${validImages.length} gambar valid dari ${imageData.length}. Minimal 3 gambar diperlukan.`);
+                return;
+            }
             
-            document.getElementById('saveBtn').style.display = 'none';
-            document.getElementById('backToStep3Btn').style.display = 'none';
+            // DEBUG: Log data yang dikirim
+            console.log('Sending to server:', {
+                employee_id: selectedEmployee.id,
+                images_count: validImages.length,
+                first_image_preview: validImages[0]?.substring(0, 100) + '...',
+                image_sizes: validImages.map(img => img.length)
+            });
             
-            loadCacheCount();
-            loadRecentRegistrations();
-            showToast('success', 'Registrasi berhasil!');
-        } else {
-            showSaveError(result.error || 'Gagal menyimpan data');
+            const response = await fetch(`/face/register-json/${selectedEmployee.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    images: validImages  // Kirim hanya gambar yang valid
+                })
+            });
+            
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            const result = await response.json();
+            console.log('Response data:', result);
+            
+            if (response.ok && result.message) {
+                // Success
+                document.getElementById('saveProgress').classList.add('hidden');
+                document.getElementById('saveSuccess').classList.remove('hidden');
+                
+                document.getElementById('successEmployeeName').textContent = selectedEmployee.name;
+                document.getElementById('successEmployeeId').textContent = selectedEmployee.code;
+                document.getElementById('successTime').textContent = new Date().toLocaleTimeString('id-ID');
+                document.getElementById('saveSuccessMessage').textContent = 
+                    `Wajah ${selectedEmployee.name} berhasil diregistrasi dengan ${validImages.length} gambar.`;
+                
+                document.getElementById('saveBtn').style.display = 'none';
+                document.getElementById('backToStep3Btn').style.display = 'none';
+                
+                loadCacheCount();
+                loadRecentRegistrations();
+                showToast('success', 'Registrasi berhasil!');
+            } else {
+                showSaveError(result.error || 'Gagal menyimpan data');
+            }
+            
+        } catch (error) {
+            console.error('Registration Error:', error);
+            showSaveError('Error: ' + error.message);
         }
-        
-    } catch (error) {
-        console.error('Registration Error:', error);
-        showSaveError('Error: ' + error.message);
     }
-}
+
+        // Tambahkan fungsi ini
+        function showSaveError(message) {
+            document.getElementById('saveProgress').classList.add('hidden');
+            document.getElementById('saveError').classList.remove('hidden');
+            document.getElementById('saveErrorMessage').textContent = message;
+            document.getElementById('errorDetails').textContent = 'Silakan coba lagi atau hubungi administrator.';
+        }
+
+        function retrySave() {
+            document.getElementById('saveError').classList.add('hidden');
+            document.getElementById('saveContent').classList.remove('hidden');
+        }
     // Fungsi kompresi gambar
     function compressImage(dataUrl, maxWidth = 800, maxHeight = 600, quality = 0.8) {
         return new Promise((resolve) => {

@@ -641,6 +641,11 @@ def register_face_page():
     """Face registration page"""
     return render_template("register_face.html")
 
+@app.route("/register")
+def register_page():
+    """Halaman pendaftaran karyawan baru"""
+    return render_template("register.html")
+
 # ===============================
 # DASHBOARD API
 # ===============================
