@@ -542,25 +542,23 @@ def get_registrations_api():
 def attendance():
     try:
         image = request.files.get("image") or request.files.get("file")
-
         if image is None:
-            return jsonify({"error": "No image"}), 400
+            return jsonify({"success": False, "message": "No image"}), 400
 
         import numpy as np
         import cv2
 
         image_bytes = image.read()
-
-        img = cv2.imdecode(
-            np.frombuffer(image_bytes, np.uint8),
-            cv2.IMREAD_COLOR
-        )
+        img = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
         if img is None:
-            return jsonify({"error": "Image decode failed"}), 400
+            return jsonify({"success": False, "message": "Image decode failed"}), 400
 
         engine = get_face_engine_safe()
+        print("CACHE:", engine.get_stats())
+
         result = engine.process_attendance(img)
+        print("HASIL FACE ENGINE:", result)
 
         if not result.get("employee_id"):
             return jsonify(result), 200
@@ -587,9 +585,9 @@ def attendance():
             if longitude:
                 existing.longitude = float(longitude)
 
-            message = "Check-out berhasil"
+            result["message"] = "Check-out berhasil"
         else:
-            attendance = Attendance(
+            new_attendance = Attendance(
                 employee_id=employee_id,
                 tanggal=today,
                 check_in=now.time(),
@@ -600,19 +598,18 @@ def attendance():
                 longitude=float(longitude) if longitude else None
             )
 
-            db.session.add(attendance)
-            message = "Check-in berhasil"
+            db.session.add(new_attendance)
+            result["message"] = "Check-in berhasil"
 
         db.session.commit()
 
         result["success"] = True
-        result["message"] = message
+        print("ABSENSI BERHASIL DISIMPAN:", result)
 
         return jsonify(result), 200
 
     except Exception as e:
         db.session.rollback()
-
         import traceback
         traceback.print_exc()
 
