@@ -879,6 +879,24 @@ def debug_encodings():
         "count": len(data),
         "employees": [d.employee_id for d in data]
     }
+
+@app.route("/test-face")
+def test_face():
+    try:
+        import face_recognition
+        import dlib
+
+        return {
+            "success": True,
+            "face_recognition": face_recognition.__version__,
+            "dlib": dlib.__version__,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }, 500
 # ===============================
 # LOCAL ONLY
 # ===============================
