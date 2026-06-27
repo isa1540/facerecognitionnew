@@ -363,6 +363,61 @@ def api_save_shift():
         "id": shift.id
     })
 
+@app.route("/api/shift/<int:id>", methods=["PUT"])
+@app.route("/api/shifts/<int:id>", methods=["PUT"])
+def api_update_shift(id):
+    try:
+        shift = ShiftSetting.query.get_or_404(id)
+        data = request.get_json(silent=True) or {}
+
+        if "nama" in data:
+            shift.nama = data["nama"]
+        if "jam_masuk" in data:
+            shift.jam_masuk = time.fromisoformat(data["jam_masuk"])
+        if "jam_pulang" in data:
+            shift.jam_pulang = time.fromisoformat(data["jam_pulang"])
+        if "toleransi_menit" in data:
+            shift.toleransi_menit = int(data["toleransi_menit"])
+        if "aktif" in data:
+            shift.aktif = bool(data["aktif"])
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Shift berhasil diperbarui"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+
+@app.route("/api/shift/<int:id>", methods=["DELETE"])
+@app.route("/api/shifts/<int:id>", methods=["DELETE"])
+def api_delete_shift(id):
+    try:
+        shift = ShiftSetting.query.get_or_404(id)
+
+        # soft delete
+        shift.aktif = False
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Shift berhasil dinonaktifkan"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
 # ===============================
 # FACE ENCODING
 # ===============================
