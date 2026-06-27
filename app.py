@@ -638,10 +638,50 @@ def leave():
 # ===============================
 @app.route("/api/laporan")
 def api_laporan():
-    return jsonify({
-        "success": True,
-        "message": "Export belum dibuat"
-    })
+    try:
+        data = db.session.query(
+            Attendance,
+            Employee
+        ).join(
+            Employee,
+            Attendance.employee_id == Employee.id
+        ).order_by(
+            Attendance.tanggal.desc(),
+            Attendance.check_in.desc()
+        ).all()
+
+        laporan = []
+
+        for attendance, employee in data:
+            laporan.append({
+                "id": attendance.id,
+                "employee_id": employee.id,
+                "kode": employee.kode,
+                "nama": employee.nama,
+                "tanggal": attendance.tanggal.isoformat() if attendance.tanggal else None,
+                "check_in": attendance.check_in.strftime("%H:%M:%S") if attendance.check_in else None,
+                "check_out": attendance.check_out.strftime("%H:%M:%S") if attendance.check_out else None,
+                "status": attendance.status,
+                "similarity": attendance.similarity,
+                "liveness_ok": attendance.liveness_ok,
+                "latitude": attendance.latitude,
+                "longitude": attendance.longitude,
+                "dibuat": attendance.dibuat.isoformat() if attendance.dibuat else None
+            })
+
+        return jsonify({
+            "success": True,
+            "data": laporan
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
     
 @app.route("/")
 def index():
