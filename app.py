@@ -561,7 +561,7 @@ def attendance():
             return jsonify({"error":"Image decode failed"}),400
 
         engine = get_face_engine_safe()
-
+        print(engine.get_stats())
         result = engine.process_attendance(img)
 
         ...
