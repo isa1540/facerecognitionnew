@@ -311,18 +311,57 @@ def api_face_cache():
 # ===============================
 # SHIFT
 # ===============================
-@app.route("/shifts", methods=["POST"])
-def create_shift():
-    data = request.json
+@app.route("/api/shift", methods=["GET"])
+def api_get_shifts():
+    shifts = ShiftSetting.query.order_by(ShiftSetting.id.asc()).all()
+
+    return jsonify({
+        "success": True,
+        "data": [
+            {
+                "id": s.id,
+                "nama": s.nama,
+                "jam_masuk": s.jam_masuk.strftime("%H:%M") if s.jam_masuk else None,
+                "jam_pulang": s.jam_pulang.strftime("%H:%M") if s.jam_pulang else None,
+                "toleransi_menit": s.toleransi_menit,
+                "aktif": s.aktif
+            }
+            for s in shifts
+        ]
+    })
+
+
+@app.route("/api/shift", methods=["POST"])
+def api_save_shift():
+    data = request.get_json(silent=True) or {}
+
+    nama = data.get("nama")
+    jam_masuk = data.get("jam_masuk")
+    jam_pulang = data.get("jam_pulang")
+    toleransi = data.get("toleransi_menit", 5)
+
+    if not nama or not jam_masuk or not jam_pulang:
+        return jsonify({
+            "success": False,
+            "message": "Nama, jam masuk, dan jam pulang wajib diisi"
+        }), 400
+
     shift = ShiftSetting(
-        nama=data["nama"],
-        jam_masuk=time.fromisoformat(data["jam_masuk"]),
-        jam_pulang=time.fromisoformat(data["jam_pulang"]),
-        toleransi_menit=data.get("toleransi_menit", 5)
+        nama=nama,
+        jam_masuk=time.fromisoformat(jam_masuk),
+        jam_pulang=time.fromisoformat(jam_pulang),
+        toleransi_menit=int(toleransi),
+        aktif=True
     )
+
     db.session.add(shift)
     db.session.commit()
-    return {"id": shift.id}
+
+    return jsonify({
+        "success": True,
+        "message": "Shift berhasil disimpan",
+        "id": shift.id
+    })
 
 # ===============================
 # FACE ENCODING
