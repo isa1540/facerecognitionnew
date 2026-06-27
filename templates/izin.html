@@ -1,10 +1,8 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
     <meta charset="UTF-8">
-    <title>Data Izin</title>
-
+    <title>Manajemen Izin & Cuti</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
@@ -12,172 +10,124 @@
 
 <div class="max-w-7xl mx-auto p-8">
 
-    <h1 class="text-3xl font-bold mb-6">
-        Data Pengajuan Izin
-    </h1>
-<div class="bg-white p-6 rounded shadow mb-6">
-    <h2 class="text-xl font-bold mb-4">Ajukan Izin</h2>
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold">Manajemen Izin & Cuti</h1>
+            <p class="text-gray-600">Approve atau reject pengajuan karyawan</p>
+        </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <select id="employee_id" class="border p-2 rounded">
-            <option value="">Pilih Karyawan</option>
-        </select>
-
-        <input id="alasan" class="border p-2 rounded" placeholder="Alasan izin">
-
-        <input id="tanggal_mulai" type="date" class="border p-2 rounded">
-
-        <input id="tanggal_selesai" type="date" class="border p-2 rounded">
+        <a href="/dashboard"
+           class="bg-gray-700 hover:bg-gray-800 text-white px-5 py-2 rounded-lg">
+            ← Kembali ke Dashboard
+        </a>
     </div>
 
-    <button onclick="submitLeave()"
-        class="mt-4 bg-blue-600 text-white px-4 py-2 rounded">
-        Kirim Pengajuan
-    </button>
-</div>
-    <table class="w-full bg-white rounded shadow">
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-blue-600 text-white">
+                <tr>
+                    <th class="p-3 text-left">Nama</th>
+                    <th class="p-3 text-left">Jenis</th>
+                    <th class="p-3 text-left">Alasan</th>
+                    <th class="p-3 text-left">Mulai</th>
+                    <th class="p-3 text-left">Selesai</th>
+                    <th class="p-3 text-left">Status</th>
+                    <th class="p-3 text-left">Aksi</th>
+                </tr>
+            </thead>
 
-        <thead class="bg-blue-600 text-white">
-
-        <tr>
-            <th class="p-3">Nama</th>
-            <th>Alasan</th>
-            <th>Mulai</th>
-            <th>Selesai</th>
-            <th>Status</th>
-            <th>Aksi</th>
-        </tr>
-
-        </thead>
-
-        <tbody id="leaveTable">
-
-        </tbody>
-
-    </table>
+            <tbody id="leaveTable">
+                <tr>
+                    <td colspan="7" class="p-6 text-center text-gray-500">
+                        Memuat data...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
 </div>
 
 <script>
-
 loadLeave();
 
-async function loadLeave(){
-
+async function loadLeave() {
     const response = await fetch("/api/leave");
-
     const result = await response.json();
 
-    console.log(result);
+    const tbody = document.getElementById("leaveTable");
 
-    let html="";
-
-    result.data.forEach(item=>{
-
-        html+=`
-        <tr class="border-b">
-
-            <td class="p-3">${item.nama}</td>
-
-            <td>${item.alasan}</td>
-
-            <td>${item.tanggal_mulai}</td>
-
-            <td>${item.tanggal_selesai}</td>
-
-            <td>${item.status}</td>
-
-            <td>
-
-                <button onclick="approve(${item.id})"
-                class="bg-green-600 text-white px-3 py-1 rounded">
-
-                Approve
-
-                </button>
-
-                <button onclick="reject(${item.id})"
-                class="bg-red-600 text-white px-3 py-1 rounded">
-
-                Reject
-
-                </button>
-
-            </td>
-
-        </tr>
+    if (!result.success || result.data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="p-6 text-center text-gray-500">
+                    Belum ada pengajuan izin/cuti
+                </td>
+            </tr>
         `;
-
-    });
-
-    document.getElementById("leaveTable").innerHTML=html;
-
-}
-
-async function approve(id){
-
-    await fetch(`/api/leave/${id}/approve`,{
-        method:"PUT"
-    });
-
-    loadLeave();
-
-}
-
-async function reject(id){
-
-    await fetch(`/api/leave/${id}/reject`,{
-        method:"PUT"
-    });
-
-    loadLeave();
-
-}
-
-loadEmployeesForLeave();
-
-async function loadEmployeesForLeave() {
-    const response = await fetch("/api/karyawan");
-    const result = await response.json();
-
-    const select = document.getElementById("employee_id");
-    select.innerHTML = `<option value="">Pilih Karyawan</option>`;
-
-    result.data.forEach(emp => {
-        select.innerHTML += `
-            <option value="${emp.id}">
-                ${emp.nama} - ${emp.kode}
-            </option>
-        `;
-    });
-}
-
-async function submitLeave() {
-    const payload = {
-        employee_id: document.getElementById("employee_id").value,
-        alasan: document.getElementById("alasan").value,
-        tanggal_mulai: document.getElementById("tanggal_mulai").value,
-        tanggal_selesai: document.getElementById("tanggal_selesai").value
-    };
-
-    const response = await fetch("/api/leave", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-    });
-
-    const result = await response.json();
-
-    alert(result.message || "Selesai");
-
-    if (result.success) {
-        document.getElementById("alasan").value = "";
-        document.getElementById("tanggal_mulai").value = "";
-        document.getElementById("tanggal_selesai").value = "";
-        loadLeave();
+        return;
     }
+
+    let html = "";
+
+    result.data.forEach(item => {
+        const statusClass =
+            item.status === "DISETUJUI"
+                ? "bg-green-100 text-green-700"
+                : item.status === "DITOLAK"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-yellow-100 text-yellow-700";
+
+        html += `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="p-3">${item.nama}</td>
+                <td class="p-3">${item.jenis || "IZIN"}</td>
+                <td class="p-3">${item.alasan}</td>
+                <td class="p-3">${item.tanggal_mulai}</td>
+                <td class="p-3">${item.tanggal_selesai}</td>
+                <td class="p-3">
+                    <span class="px-3 py-1 rounded-full text-sm ${statusClass}">
+                        ${item.status}
+                    </span>
+                </td>
+                <td class="p-3 space-x-2">
+                    ${
+                        item.status === "PENDING"
+                        ? `
+                            <button onclick="approve(${item.id})"
+                                class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
+                                Approve
+                            </button>
+
+                            <button onclick="reject(${item.id})"
+                                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
+                                Reject
+                            </button>
+                        `
+                        : `<span class="text-gray-400">Selesai</span>`
+                    }
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+}
+
+async function approve(id) {
+    await fetch(`/api/leave/${id}/approve`, {
+        method: "PUT"
+    });
+
+    loadLeave();
+}
+
+async function reject(id) {
+    await fetch(`/api/leave/${id}/reject`, {
+        method: "PUT"
+    });
+
+    loadLeave();
 }
 </script>
 
