@@ -311,7 +311,7 @@ def api_face_cache():
 # ===============================
 # SHIFT
 # ===============================
-@app.route("/api/shift", methods=["GET"])
+@app.route("/api/shifts", methods=["GET"])
 def api_get_shifts():
     shifts = ShiftSetting.query.order_by(ShiftSetting.id.asc()).all()
 
@@ -331,7 +331,7 @@ def api_get_shifts():
     })
 
 
-@app.route("/api/shift", methods=["POST"])
+@app.route("/api/shifts", methods=["POST"])
 def api_save_shift():
     data = request.get_json(silent=True) or {}
 
@@ -741,7 +741,7 @@ def karyawan_page():
     return render_template("karyawan.html")
 
 
-@app.route("/shift")
+@app.route("/shifts")
 def shift_page():
     return render_template("shift.html")
 
