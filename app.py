@@ -120,6 +120,12 @@ def login_api():
     flash("Login berhasil.", "success")
     return redirect(url_for("dashboard_page"))
 
+@app.route("/logout")
+def logout():
+    """Logout user and clear session"""
+    session.clear()
+    flash("Anda telah logout.", "success")
+    return redirect(url_for("login_page"))
 # ===============================
 # EMPLOYEE
 # ===============================
