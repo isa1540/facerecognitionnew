@@ -172,51 +172,59 @@ class FaceEngine:
             return None
     
     def process_attendance(self, image_data):
-        """Process attendance with face recognition"""
         try:
+            print("===== PROCESS ATTENDANCE =====")
+
             encoding = self.extract_face_encoding(image_data)
-            
+
             if encoding is None:
-                return {
-                    'employee_id': None,
-                    'similarity': 0.0,
-                    'liveness_ok': False,
-                    'message': 'Face not detected'
-                }
-            
+                print("Encoding gagal")
+            return {
+                "employee_id": None,
+                "message": "Face not detected",
+                "similarity": 0,
+                "liveness_ok": False
+            }
+
+            print("Jumlah wajah di cache:", len(self.face_encodings))
+
             employee_id = None
-            best_distance = float('inf')
-            
-            for emp_id, cached_encoding in self.face_encodings.items():
-                distance = np.linalg.norm(np.array(encoding) - np.array(cached_encoding))
-                
-                if distance < 0.6 and distance < best_distance:
-                    employee_id = emp_id
-                    best_distance = distance
-            
-            if employee_id is None:
-                return {
-                    'employee_id': None,
-                    'similarity': 0.0,
-                    'liveness_ok': False,
-                    'message': 'Face not recognized'
-                }
-            
+            best_distance = 999
+
+            for emp_id, cached in self.face_encodings.items():
+
+                distance = np.linalg.norm(
+                np.array(encoding) - np.array(cached)
+            )
+
+            print(f"Employee {emp_id} distance = {distance}")
+
+            if distance < best_distance:
+                best_distance = distance
+                employee_id = emp_id
+
+            print("Best distance =", best_distance)
+
+            if best_distance > 0.6:
+                print("Face not recognized")
             return {
-                'employee_id': employee_id,
-                'similarity': 1.0 - best_distance,
-                'liveness_ok': True,
-                'message': 'Attendance recorded'
+                "employee_id": None,
+                "message": "Face not recognized",
+                "similarity": 0,
+                "liveness_ok": False
             }
-            
+
+            print("Matched employee =", employee_id)
+
+            return {
+            "employee_id": employee_id,
+            "similarity": 1 - best_distance,
+            "liveness_ok": True
+        }
+
         except Exception as e:
-            print(f"❌ Error processing attendance: {e}")
-            return {
-                'employee_id': None,
-                'similarity': 0.0,
-                'liveness_ok': False,
-                'message': f'Error: {str(e)}'
-            }
+            print(e)
+        raise
     
     def load_cache(self):
         """Load face cache from file"""
