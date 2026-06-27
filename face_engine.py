@@ -112,14 +112,15 @@ class FaceEngine:
     def extract_face_encoding(self, image_data):
         """Extract face encoding from various input formats"""
     try:
+
+        # OpenCV image (numpy array)
         if isinstance(image_data, np.ndarray):
             img = Image.fromarray(image_data)
             buffer = io.BytesIO()
             img.save(buffer, format="JPEG")
-            return self.extract_face_encoding_from_bytes(
-                buffer.getvalue()
-            )
+            return self.extract_face_encoding_from_bytes(buffer.getvalue())
 
+        # Base64 string
         elif isinstance(image_data, str):
             if image_data.startswith("data:image"):
                 image_data = image_data.split(",")[1]
@@ -127,18 +128,20 @@ class FaceEngine:
             image_bytes = base64.b64decode(image_data)
             return self.extract_face_encoding_from_bytes(image_bytes)
 
+        # Raw bytes
         elif isinstance(image_data, bytes):
             return self.extract_face_encoding_from_bytes(image_data)
 
+        # Already encoding
         elif isinstance(image_data, list):
             return image_data
 
         else:
-            print(f"⚠️ Unsupported image type: {type(image_data)}")
+            print(f"Unsupported image type: {type(image_data)}")
             return None
 
     except Exception as e:
-        print(f"❌ Error in extract_face_encoding: {e}")
+        print(f"Error extract_face_encoding: {e}")
         return None
     
     def add_face_encoding(self, employee_id, encoding):
