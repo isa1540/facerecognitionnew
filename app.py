@@ -2,8 +2,7 @@
 # RAILWAY + GUNICORN SAFE BOOT
 # ===============================
 import os
-os.environ["MEDIAPIPE_DISABLE_GPU"] = "1"
-os.environ["OMP_NUM_THREADS"] = "1"
+
 
 # ===============================
 # BASIC IMPORT

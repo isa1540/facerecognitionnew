@@ -71,14 +71,14 @@ class FaceCache:
                                     )
                                     self.cache[emp_id] = entry
                     
-                    print(f"Loaded {len(self.cache)} face encodings from cache")
+                    print(f"📂 Loaded {len(self.cache)} face encodings from cache")
                     
                     # Clean up old entries if over limit
                     if len(self.cache) > self.max_size:
                         self._cleanup_old_entries()
                         
             except Exception as e:
-                print(f"Error loading face cache: {e}")
+                print(f"⚠️ Error loading face cache: {e}")
                 self.cache = {}
     
     def _save_cache(self):
@@ -104,7 +104,7 @@ class FaceCache:
                     pickle.dump(save_data, f)
                     
             except Exception as e:
-                print(f"Error saving face cache: {e}")
+                print(f"⚠️ Error saving face cache: {e}")
     
     def _cleanup_old_entries(self):
         """Remove least recently accessed entries if over limit"""
@@ -123,7 +123,7 @@ class FaceCache:
             emp_id, _ = sorted_entries[i]
             del self.cache[emp_id]
         
-        print(f"Cleaned up {entries_to_remove} old entries from cache")
+        print(f"🧹 Cleaned up {entries_to_remove} old entries from cache")
         self._save_cache()
     
     def add(self, employee_id: int, encoding: List[float]) -> bool:
@@ -140,7 +140,7 @@ class FaceCache:
         try:
             # Validate encoding
             if not encoding or len(encoding) != 128:
-                print(f"Invalid encoding length: {len(encoding) if encoding else 0}")
+                print(f"⚠️ Invalid encoding length: {len(encoding) if encoding else 0}")
                 return False
             
             # Convert to list if numpy array
@@ -161,11 +161,11 @@ class FaceCache:
                 self.cache[employee_id] = entry
                 self._save_cache()
             
-            print(f"Added face encoding for employee {employee_id}")
+            print(f"✅ Added face encoding for employee {employee_id}")
             return True
             
         except Exception as e:
-            print(f"Error adding face encoding: {e}")
+            print(f"❌ Error adding face encoding: {e}")
             return False
     
     def get(self, employee_id: int) -> Optional[List[float]]:
@@ -188,7 +188,7 @@ class FaceCache:
                 # Verify integrity
                 current_hash = self._calculate_hash(entry.encoding)
                 if current_hash != entry.hash_md5:
-                    print(f"Hash mismatch for employee {employee_id}, removing corrupted entry")
+                    print(f"⚠️ Hash mismatch for employee {employee_id}, removing corrupted entry")
                     self.remove(employee_id)
                     return None
                 
@@ -210,7 +210,7 @@ class FaceCache:
             if employee_id in self.cache:
                 del self.cache[employee_id]
                 self._save_cache()
-                print(f"Removed face encoding for employee {employee_id}")
+                print(f"🗑️ Removed face encoding for employee {employee_id}")
                 return True
         
         return False
@@ -269,7 +269,7 @@ class FaceCache:
             self.cache.clear()
             if os.path.exists(self.cache_file):
                 os.remove(self.cache_file)
-            print("Cleared all face encodings")
+            print("🗑️ Cleared all face encodings")
     
     def size(self) -> int:
         """Get number of cached encodings"""
@@ -340,14 +340,14 @@ class FaceCache:
                 if os.path.exists(self.cache_file):
                     import shutil
                     shutil.copy2(self.cache_file, backup_path)
-                    print(f"Cache backed up to: {backup_path}")
+                    print(f"💾 Cache backed up to: {backup_path}")
                     return True
                 else:
-                    print("No cache file to backup")
+                    print("⚠️ No cache file to backup")
                     return False
                     
         except Exception as e:
-            print(f"Error backing up cache: {e}")
+            print(f"❌ Error backing up cache: {e}")
             return False
     
     def restore(self, backup_path: str) -> bool:
@@ -362,7 +362,7 @@ class FaceCache:
         """
         try:
             if not os.path.exists(backup_path):
-                print(f"Backup file not found: {backup_path}")
+                print(f"❌ Backup file not found: {backup_path}")
                 return False
             
             with self.lock:
@@ -379,14 +379,14 @@ class FaceCache:
                 # Reload cache
                 self._load_cache()
                 
-                print(f"Cache restored from: {backup_path}")
+                print(f"✅ Cache restored from: {backup_path}")
                 if os.path.exists(current_backup):
-                    print(f"Previous cache backed up to: {current_backup}")
+                    print(f"💾 Previous cache backed up to: {current_backup}")
                 
                 return True
                 
         except Exception as e:
-            print(f"Error restoring cache: {e}")
+            print(f"❌ Error restoring cache: {e}")
             
             # Try to restore from pre_restore backup
             if os.path.exists(self.cache_file + '.pre_restore'):
@@ -394,7 +394,7 @@ class FaceCache:
                     import shutil
                     shutil.copy2(self.cache_file + '.pre_restore', self.cache_file)
                     self._load_cache()
-                    print("Restored original cache after failed restore attempt")
+                    print("✅ Restored original cache after failed restore attempt")
                 except:
                     pass
             
@@ -437,13 +437,8 @@ class FaceCache:
             
             if removed:
                 self._save_cache()
-                print(f"Removed {len(removed)} invalid entries: {removed}")    
+                print(f"🧹 Removed {len(removed)} invalid entries: {removed}")    
         return removed
-
-# HAPUS fungsi ini - INI BUG SERIUS!
-# def all(self) -> Dict[int, List[float]]:
-#     """Alias untuk kompatibilitas dengan face_engine"""
-#     return self.get_all()
 
 # Global instance for easy import
 face_cache = FaceCache()
