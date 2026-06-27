@@ -855,7 +855,7 @@ async function captureFace() {
                 formData.append('longitude', gpsLocation.longitude);
             }
 
-            const response = await fetch('/api/absen', {
+            const response = await fetch('/attendance', {
                 method: 'POST',
                 body: formData
             });
@@ -993,8 +993,8 @@ async function captureFace() {
                         captureBtn.disabled = true;
                         
                         // Send to server - USING MAIN ENDPOINT
-                        console.log('Mengirim permintaan ke /api/absen');
-                        const response = await fetch('/api/absen', {
+                        console.log('Mengirim permintaan ke /attendance');
+                        const response = await fetch('/attendance', {
                             method: 'POST',
                             body: formData
                         });
@@ -1144,7 +1144,7 @@ function showSuccess(data) {
         // Load attendance stats from PUBLIC API
         async function loadAttendanceStats() {
             try {
-                const response = await fetch('/api/public/dashboard-stats');
+                const response = await fetch('/api/dashboard-stats');
                 
                 // Check response
                 if (!response.ok) {
@@ -1177,7 +1177,7 @@ function showSuccess(data) {
         // Load recent attendance from PUBLIC API
         async function loadRecentAttendance() {
             try {
-                const response = await fetch('/api/public/attendance-today');
+                const response = await fetch('/api/attendance-today');
                 
                 if (!response.ok) {
                     console.warn('API public attendance failed');
