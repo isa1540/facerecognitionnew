@@ -205,7 +205,7 @@ class FaceEngine:
 
             print("Best distance =", best_distance)
 
-            if best_distance > 0.6:
+            if employee_id is None or best_distance > 0.6:
                 print("Face not recognized")
             return {
                 "employee_id": None,
@@ -218,12 +218,13 @@ class FaceEngine:
 
             return {
             "employee_id": employee_id,
-            "similarity": 1 - best_distance,
-            "liveness_ok": True
+            "similarity": float(1 - best_distance),
+            "liveness_ok": True,
+            "message": "Attendance recorded"
         }
 
         except Exception as e:
-            print(e)
+            print("Process attendance error:", e)
         raise
     
     def load_cache(self):
