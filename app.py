@@ -444,7 +444,7 @@ def register_face_json(employee_id):
         
         print(f"📊 Summary: {len(valid_encodings)} valid faces, {len(failed_images)} failed")
         
-        if len(valid_encodings) < 3:
+        if len(valid_encodings) < 2:
             return jsonify({
                 "error": f"Hanya {len(valid_encodings)} wajah valid dari {len(images)} gambar. Minimal 3 diperlukan.",
                 "details": {
