@@ -848,7 +848,7 @@ async function captureFace() {
 
         canvas.toBlob(async (blob) => {
             const formData = new FormData();
-            formData.append('image', blob, 'face.jpg');
+            formData.append('file', blob, 'face.jpg');
 
             if (gpsLocation) {
                 formData.append('latitude', gpsLocation.latitude);
@@ -977,7 +977,7 @@ async function captureFace() {
                     try {
                         // Prepare form data
                         const formData = new FormData();
-                        formData.append('image', blob, 'face_capture.jpg');
+                        formData.append('file', blob, 'face_capture.jpg');
                         
                         // Add GPS coordinates if available
                         if (gpsLocation) {
@@ -1143,36 +1143,48 @@ function showSuccess(data) {
         
         // Load attendance stats from PUBLIC API
         async function loadAttendanceStats() {
-            try {
-                const response = await fetch('/api/dashboard-stats');
-                
-                // Check response
-                if (!response.ok) {
-                    console.warn('API public stats failed');
-                    return;
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    const stats = data.stats;
-                    
-                    document.getElementById('todayPresent').textContent = stats.today_attendance || 0;
-                    document.getElementById('todayLate').textContent = stats.late_today || 0;
-                    document.getElementById('checkInCount').textContent = stats.check_in_count || 0;
-                    document.getElementById('checkOutCount').textContent = stats.check_out_count || 0;
-                    document.getElementById('totalEmployeesCount').textContent = stats.total_employees || 0;
-                    
-                    // Update quick stats
-                    document.getElementById('statsTotal').textContent = stats.today_attendance || 0;
-                    document.getElementById('statsSimilarity').textContent = '92%';
-                    document.getElementById('statsLiveness').textContent = '98%';
-                    document.getElementById('statsProcessingTime').textContent = '450ms';
-                }
-            } catch (error) {
-                console.error('Error loading stats:', error);
-            }
+    try {
+        const response = await fetch('/api/dashboard-stats');
+
+        if (!response.ok) {
+            console.warn('API dashboard-stats failed');
+            return;
         }
+
+        const data = await response.json();
+
+        console.log("Dashboard API:", data);
+
+        if (!data.success) return;
+
+        const stats = data.data;
+
+        document.getElementById('todayPresent').textContent =
+            stats.today_attendance || 0;
+
+        document.getElementById('todayLate').textContent =
+            stats.late_today || 0;
+
+        document.getElementById('checkInCount').textContent =
+            stats.today_checkin || 0;
+
+        document.getElementById('checkOutCount').textContent =
+            stats.today_checkout || 0;
+
+        document.getElementById('totalEmployeesCount').textContent =
+            stats.total_employees || 0;
+
+        document.getElementById('statsTotal').textContent =
+            stats.today_attendance || 0;
+
+        document.getElementById('statsSimilarity').textContent = "92%";
+        document.getElementById('statsLiveness').textContent = "98%";
+        document.getElementById('statsProcessingTime').textContent = "450ms";
+
+    } catch (error) {
+        console.error("Error loading stats:", error);
+    }
+}
         
         // Load recent attendance from PUBLIC API
         async function loadRecentAttendance() {

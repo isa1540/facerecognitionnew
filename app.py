@@ -540,6 +540,9 @@ def get_registrations_api():
 # ===============================
 @app.route("/attendance", methods=["POST"])
 def attendance():
+    print("FILES:", request.files.keys())
+    print("FORM :", request.form)
+
     if "file" not in request.files:
         return {"error": "No image"}, 400
 
@@ -684,6 +687,11 @@ def api_dashboard_stats():
             Attendance.check_out.isnot(None)
         ).count()
         
+        late_today = Attendance.query.filter(
+        Attendance.tanggal == today,
+        Attendance.status == "TERLAMBAT"
+        ).count()
+        
         # This month attendance
         first_day = date(today.year, today.month, 1)
         month_attendance = Attendance.query.filter(
@@ -692,22 +700,26 @@ def api_dashboard_stats():
         ).count()
         
         return jsonify({
-            'success': True,
-            'data': {
-                'total_employees': total_employees,
-                'active_employees': active_employees,
-                'face_registered': face_registered,
-                'face_registration_rate': round((face_registered / total_employees * 100) if total_employees > 0 else 0, 1),
-                'today_attendance': today_attendance,
-                'today_checkin': today_checkin,
-                'today_checkout': today_checkout,
-                'month_attendance': month_attendance,
-                'registration_trend': [
-                    {'label': 'Terdaftar', 'value': face_registered},
-                    {'label': 'Belum', 'value': total_employees - face_registered}
-                ]
-            }
-        })
+    'success': True,
+    'data': {
+        'total_employees': total_employees,
+        'active_employees': active_employees,
+        'face_registered': face_registered,
+        'face_registration_rate': round(
+            (face_registered / total_employees * 100)
+            if total_employees > 0 else 0, 1
+        ),
+        'today_attendance': today_attendance,
+        'today_checkin': today_checkin,
+        'today_checkout': today_checkout,
+        'late_today': late_today,
+        'month_attendance': month_attendance,
+        'registration_trend': [
+            {'label': 'Terdaftar', 'value': face_registered},
+            {'label': 'Belum', 'value': total_employees - face_registered}
+        ]
+    }
+})
     except Exception as e:
         print(f"Error in dashboard_stats: {e}")
         return jsonify({
