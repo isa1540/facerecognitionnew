@@ -714,19 +714,123 @@ def attendance():
 # ===============================
 # LEAVE REQUEST
 # ===============================
-@app.route("/leave", methods=["POST"])
-def leave():
-    data = request.json
-    req = LeaveRequest(
-        employee_id=data["employee_id"],
-        alasan=data["alasan"],
-        tanggal_mulai=data["tanggal_mulai"],
-        tanggal_selesai=data["tanggal_selesai"]
-    )
-    db.session.add(req)
-    db.session.commit()
-    return {"id": req.id}
+@app.route("/api/leave", methods=["GET"])
+def api_leave():
+    try:
+        leaves = db.session.query(
+            LeaveRequest,
+            Employee
+        ).join(
+            Employee,
+            LeaveRequest.employee_id == Employee.id
+        ).order_by(
+            LeaveRequest.dibuat.desc()
+        ).all()
 
+        data = []
+
+        for leave, employee in leaves:
+            data.append({
+                "id": leave.id,
+                "employee_id": employee.id,
+                "nama": employee.nama,
+                "alasan": leave.alasan,
+                "tanggal_mulai": leave.tanggal_mulai.isoformat(),
+                "tanggal_selesai": leave.tanggal_selesai.isoformat(),
+                "status": leave.status,
+                "bukti_foto": leave.bukti_foto
+            })
+
+        return jsonify({
+            "success": True,
+            "data": data
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }),500
+
+@app.route("/api/leave", methods=["POST"])
+def api_create_leave():
+    try:
+        data = request.get_json(silent=True) or request.form
+
+        employee_id = data.get("employee_id")
+        alasan = data.get("alasan")
+        tanggal_mulai = data.get("tanggal_mulai")
+        tanggal_selesai = data.get("tanggal_selesai")
+
+        if not employee_id or not alasan or not tanggal_mulai or not tanggal_selesai:
+            return jsonify({
+                "success": False,
+                "message": "Data izin belum lengkap"
+            }), 400
+
+        leave = LeaveRequest(
+            employee_id=int(employee_id),
+            alasan=alasan,
+            tanggal_mulai=date.fromisoformat(tanggal_mulai),
+            tanggal_selesai=date.fromisoformat(tanggal_selesai),
+            status="PENDING"
+        )
+
+        db.session.add(leave)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Pengajuan izin berhasil dikirim"
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+
+@app.route("/api/leave/<int:id>/approve", methods=["PUT"])
+def approve_leave(id):
+
+    leave = LeaveRequest.query.get_or_404(id)
+
+    leave.status = "DISETUJUI"
+
+    db.session.commit()
+
+    return jsonify({
+        "success":True,
+        "message":"Izin disetujui"
+    })
+
+@app.route("/api/leave/<int:id>/reject", methods=["PUT"])
+def reject_leave(id):
+
+    leave = LeaveRequest.query.get_or_404(id)
+
+    leave.status = "DITOLAK"
+
+    db.session.commit()
+
+    return jsonify({
+        "success":True,
+        "message":"Izin ditolak"
+    })
+
+@app.route("/api/leave/<int:id>", methods=["DELETE"])
+def delete_leave(id):
+
+    leave = LeaveRequest.query.get_or_404(id)
+
+    db.session.delete(leave)
+
+    db.session.commit()
+
+    return jsonify({
+        "success":True
+    })
 # ===============================
 # LAPORAN API
 # ===============================
